@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 
-const title = 'Mentions légales | donnees-immo.fr'
+const title = 'Mentions légales'
 const description =
   'Éditeur, hébergement, source des données, licence et traitement des données personnelles de donnees-immo.fr.'
 ---
@@ -10,26 +10,26 @@ const description =
 <Base title={title} description={description}>
   <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: 'Mentions légales' }]} />
 
-  <h1 class="mt-4 text-3xl font-semibold sm:text-4xl">Mentions légales</h1>
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">Mentions légales</h1>
 
-  <div class="mt-6 max-w-2xl space-y-8 text-ink-secondary">
+  <div class="mt-8 max-w-2xl space-y-12 text-ink-secondary">
     <section>
-      <h2 class="text-base font-semibold text-ink">Éditeur</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Éditeur</h2>
+      <p class="mt-3 leading-relaxed">
         Jean Robertou, éditeur du site et directeur de la publication.
       </p>
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Hébergement</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Hébergement</h2>
+      <p class="mt-3 leading-relaxed">
         OVH SAS — 2 rue Kellermann, 59100 Roubaix, France. Téléphone : 1007.
       </p>
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Source et licence</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Source et licence</h2>
+      <p class="mt-3 leading-relaxed">
         Les données affichées sont dérivées des « Demandes de valeurs foncières géolocalisées »,
         produites par la Direction générale des finances publiques et diffusées par Etalab sous
         <a
@@ -39,32 +39,32 @@ const description =
         >. Les agrégats publiés ici sont réutilisables sous la même licence, avec mention de la
         DGFiP comme source.
       </p>
-      <p class="mt-2 leading-relaxed">
+      <p class="mt-3 leading-relaxed">
         Ce site n'est ni édité ni approuvé par la DGFiP ou par Etalab.
       </p>
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Données personnelles</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Données personnelles</h2>
+      <p class="mt-3 leading-relaxed">
         L'article R*112 A-3 du livre des procédures fiscales interdit toute réutilisation des DVF
         permettant de réidentifier les personnes concernées, ainsi que l'indexation des mutations
         elles-mêmes par les moteurs de recherche.
       </p>
-      <p class="mt-2 leading-relaxed">
+      <p class="mt-3 leading-relaxed">
         Ce site ne publie que des agrégats à l'échelle de la commune, calculés sur un minimum de 50
         ventes. Aucune transaction individuelle, aucune adresse, aucune parcelle et aucun nom n'y
         figurent. Les cellules reposant sur trop peu de ventes sont supprimées plutôt qu'affichées.
       </p>
-      <p class="mt-2 leading-relaxed">
+      <p class="mt-3 leading-relaxed">
         Le site ne dépose aucun cookie, n'utilise aucun traceur publicitaire et ne collecte aucune
         donnée de navigation nominative.
       </p>
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Exactitude</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Exactitude</h2>
+      <p class="mt-3 leading-relaxed">
         Les chiffres sont fournis à titre informatif. Ils décrivent des ventes passées et ne
         constituent ni une estimation de bien, ni un conseil en investissement. La
         <a

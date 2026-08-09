@@ -1,5 +1,18 @@
 ---
+// Emits both the visible trail and its BreadcrumbList markup, so the two can
+// never disagree — search results show the trail instead of a bare URL.
 const { items } = Astro.props
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: items.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.label,
+    ...(item.href ? { item: new URL(item.href, Astro.site).href } : {}),
+  })),
+}
 ---
 
 <nav aria-label="Fil d'ariane" class="text-xs text-ink-muted">
@@ -9,7 +22,10 @@ const { items } = Astro.props
         <li class="flex items-center gap-1.5">
           {index > 0 && <span aria-hidden="true">/</span>}
           {item.href ? (
-            <a class="underline decoration-hairline underline-offset-2 hover:text-brand-600" href={item.href}>
+            <a
+              class="underline decoration-hairline underline-offset-2 hover:text-brand-600"
+              href={item.href}
+            >
               {item.label}
             </a>
           ) : (
@@ -20,3 +36,5 @@ const { items } = Astro.props
     }
   </ol>
 </nav>
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />

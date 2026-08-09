@@ -31,6 +31,7 @@ SELECT code_commune, type_local,
        least(pieces, 5)       AS pieces,
        count(*)               AS n,
        round(median(prix))    AS prix_median,
+       round(median(prix_m2)) AS prix_m2_median,
        round(median(surface)) AS surface_mediane
 FROM ventes
 WHERE annee >= 2024 AND pieces BETWEEN 1 AND 20
@@ -81,6 +82,7 @@ SELECT
   type_local, least(pieces, 5) AS pieces,
   count(*)               AS n,
   round(median(prix))    AS prix_median,
+  round(median(prix_m2)) AS prix_m2_median,
   round(median(surface)) AS surface_mediane
 FROM ventes
 WHERE annee >= 2024 AND pieces BETWEEN 1 AND 20

@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config'
 import sitemap from '@astrojs/sitemap'
 import tailwindcss from '@tailwindcss/vite'
+import { DATASET } from './src/lib/dataset.js'
 
 export default defineConfig({
   site: 'https://donnees-immo.fr',
@@ -15,6 +16,13 @@ export default defineConfig({
   // in `.html`, which points at an address Cloudflare redirects away from.
   trailingSlash: 'never',
   build: { format: 'directory', inlineStylesheets: 'auto' },
-  integrations: [sitemap()],
+  integrations: [
+    // Every page is regenerated from the same DVF release, so they share one
+    // lastmod. Without it crawlers have no signal that 3730 pages changed at
+    // once when the dataset is refreshed twice a year.
+    sitemap({
+      serialize: (item) => ({ ...item, lastmod: DATASET.releaseDate }),
+    }),
+  ],
   vite: { plugins: [tailwindcss()] },
 })

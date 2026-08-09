@@ -21,21 +21,42 @@ const communes = department.communes
 // Department names carry no gender or article in the dataset, so every
 // generated sentence goes through « le département X » rather than guessing
 // between « en Gironde », « dans le Rhône » and « aux Hauts-de-Seine ».
-const title = `Prix immobilier — ${department.name} (${department.code}), ${communes.length} communes | donnees-immo.fr`
-const description = `Prix immobilier dans le département ${department.name} (${department.code}) : médiane au m² pour ${communes.length} communes, calculée sur les ventes réellement enregistrées. Source DVF (DGFiP).`
+const title = `Prix immobilier — ${department.name} (${department.code}), ${communes.length} communes`
+const description = `Prix au m² des ${communes.length} communes du département ${department.name} (${department.code}), calculé sur les ventes enregistrées entre 2021 et 2025. Source DVF.`
 
 const cell = (commune, type) =>
   commune.recent[type].count ? formatPricePerSqm(commune.recent[type].pricePerSqm) : '—'
+
+// Extremes are ranked within a single property type — mixing a house median
+// into an apartment ranking would compare two different markets. Houses are
+// published in more communes, so they are the default; apartments take over
+// only where they cover more of the department.
+const withType = (type) => communes.filter((commune) => commune.recent[type].count)
+const rankingType = withType('house').length >= withType('apartment').length ? 'house' : 'apartment'
+const ranked = [...withType(rankingType)].sort(
+  (a, b) => b.recent[rankingType].pricePerSqm - a.recent[rankingType].pricePerSqm
+)
+// Below ten communes the "top 5" and "bottom 5" would overlap or cover the
+// whole department, which tells the reader nothing.
+const extremes =
+  ranked.length >= 10
+    ? {
+        type: rankingType,
+        label: rankingType === 'house' ? 'maison' : 'appartement',
+        highest: ranked.slice(0, 5),
+        lowest: ranked.slice(-5).reverse(),
+      }
+    : null
 ---
 
 <Base title={title} description={description}>
   <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: department.name }]} />
 
-  <h1 class="mt-4 text-3xl font-semibold sm:text-4xl">
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">
     Prix immobilier — {department.name} ({department.code})
   </h1>
 
-  <p class="mt-4 max-w-2xl text-lg leading-relaxed text-ink-secondary">
+  <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-secondary">
     <strong class="font-semibold text-ink">{communes.length}</strong>
     {communes.length > 1 ? ' communes' : ' commune'} de ce département comptent assez de ventes
     pour publier un prix médian fiable sur les 24 derniers mois.
@@ -47,7 +68,9 @@ const cell = (commune, type) =>
     faux.
   </p>
 
-  <div class="mt-8 overflow-x-auto rounded-lg border border-hairline bg-surface">
+  <h2 class="mt-14 text-xl font-semibold">Toutes les communes du département</h2>
+
+  <div class="mt-6 overflow-x-auto rounded-lg border border-hairline bg-surface">
     <table class="w-full text-sm">
       <caption class="sr-only">
         Prix médian au mètre carré par commune, sur 24 mois
@@ -90,4 +113,34 @@ const cell = (commune, type) =>
     « — » signale un type de bien comptant moins de 50 ventes sur 24 mois, trop peu pour publier
     une médiane.
   </p>
+
+  {
+    extremes && (
+      <section class="my-14 grid gap-6 md:grid-cols-2">
+        {[
+          { heading: `Où la ${extremes.label} coûte le plus cher`, list: extremes.highest },
+          { heading: `Où la ${extremes.label} coûte le moins cher`, list: extremes.lowest },
+        ].map((block) => (
+          <div class="rounded-xl border border-hairline bg-surface p-6">
+            <h2 class="text-base font-semibold">{block.heading}</h2>
+            <ol class="mt-4 space-y-1">
+              {block.list.map((commune) => (
+                <li class="flex items-baseline justify-between gap-3 border-b border-hairline py-2 text-sm last:border-0">
+                  <a
+                    class="font-medium underline decoration-brand-300 underline-offset-4 hover:text-brand-600"
+                    href={`/prix-immobilier-${commune.slug}`}
+                  >
+                    {commune.name}
+                  </a>
+                  <span class="shrink-0 text-ink-secondary tabular">
+                    {formatPricePerSqm(commune.recent[extremes.type].pricePerSqm)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </section>
+    )
+  }
 </Base>

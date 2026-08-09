@@ -101,10 +101,10 @@ const [recentRows, yearlyRows, roomRows] = await Promise.all([
          UNION ALL
          SELECT code_commune, annee, type_local, n, prix_m2_median, prix_median
          FROM agg_annuel_villes`),
-  query(`SELECT code_commune, type_local, pieces, n, prix_median, surface_mediane
+  query(`SELECT code_commune, type_local, pieces, n, prix_median, prix_m2_median, surface_mediane
          FROM agg_pieces
          UNION ALL
-         SELECT code_commune, type_local, pieces, n, prix_median, surface_mediane
+         SELECT code_commune, type_local, pieces, n, prix_median, prix_m2_median, surface_mediane
          FROM agg_pieces_villes`),
 ])
 
@@ -282,6 +282,7 @@ const buildRooms = (rows = []) => {
       rooms: num(row.pieces),
       count: num(row.n),
       medianPrice: num(row.prix_median),
+      pricePerSqm: num(row.prix_m2_median),
       medianArea: num(row.surface_mediane),
     })
   }

@@ -1,68 +1,229 @@
 ---
 import Base from '../layouts/Base.astro'
-import { allCommunes } from '../lib/communes.js'
+import { allCommunes, publishedTypes } from '../lib/communes.js'
 import { departments } from '../lib/departments.js'
-import { formatCount } from '../lib/format.js'
+import { groupByRegion } from '../lib/regions.js'
+import { formatCount, formatPricePerSqm } from '../lib/format.js'
+import { DATASET } from '../lib/dataset.js'
 
-const totalCommunes = allCommunes.length
-const missing = ['Bas-Rhin', 'Haut-Rhin', 'Moselle', 'Mayotte']
+const regions = groupByRegion(departments)
 
-const title = 'Prix immobilier en France, commune par commune | donnees-immo.fr'
-const description = `Prix médian au m² pour ${formatCount(totalCommunes)} communes françaises, calculé sur les ventes réellement enregistrées entre 2021 et 2025. Source DVF (DGFiP), accès libre.`
+// The largest markets carry most of the search demand, and they give the page
+// somewhere obvious to click before the region lists.
+const salesOf = (commune) =>
+  publishedTypes(commune).reduce((sum, type) => sum + commune.recent[type].count, 0)
+
+const biggestCities = allCommunes
+  .filter((commune) => commune.kind !== 'arrondissement')
+  .sort((a, b) => salesOf(b) - salesOf(a))
+  .slice(0, 24)
+  .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+
+const title = 'Prix immobilier en France, commune par commune'
+const description = `Le prix au m² de ${formatCount(allCommunes.length)} communes françaises, calculé sur les ventes enregistrées par l'administration fiscale entre 2021 et 2025.`
+
+// The homepage carries the site-level markup the inner pages inherit context
+// from. No SearchAction: the search box filters a local index and produces no
+// crawlable results URL, so declaring one would describe an endpoint that does
+// not exist.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: DATASET.siteName,
+  url: Astro.site.href,
+  inLanguage: 'fr-FR',
+  description,
+  license: DATASET.licenseUrl,
+  isBasedOn: DATASET.sourceUrl,
+}
 ---
 
 <Base title={title} description={description}>
-  <h1 class="text-3xl font-semibold sm:text-4xl">Prix immobilier, commune par commune</h1>
+  <script slot="head" type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
 
-  <p class="mt-4 max-w-2xl text-lg leading-relaxed text-ink-secondary">
-    Le prix médian au mètre carré de
-    <strong class="font-semibold text-ink">{formatCount(totalCommunes)} communes</strong>, calculé
-    à partir des <strong class="font-semibold text-ink">4 millions de ventes</strong> enregistrées
-    par l'administration fiscale entre 2021 et 2025. Ce sont des transactions réelles, pas des
-    estimations d'agence.
-  </p>
+  <section class="py-6 sm:py-10">
+    <h1 class="max-w-3xl text-4xl font-semibold sm:text-5xl">
+      Combien coûte un logement dans votre commune ?
+    </h1>
+    <p class="mt-6 max-w-2xl text-lg leading-relaxed text-ink-secondary">
+      Le prix au mètre carré de
+      <strong class="font-semibold text-ink">{formatCount(allCommunes.length)} communes</strong>,
+      calculé à partir des ventes enregistrées par l'administration fiscale entre 2021 et 2025.
+      Pas des estimations d'agence : des actes signés.
+    </p>
 
-  <section class="mt-10">
-    <h2 class="text-base font-semibold">Choisir un département</h2>
-    <ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="mt-8 max-w-xl">
+      <label for="commune-search" class="block text-sm font-medium">
+        Chercher une commune
+      </label>
+      <input
+        id="commune-search"
+        type="search"
+        autocomplete="off"
+        placeholder="Bordeaux, Lyon 3e, Saint-Malo…"
+        class="mt-2 w-full rounded-lg border border-baseline bg-surface px-4 py-3 text-base shadow-[0_1px_2px_rgba(28,24,21,0.04)] transition-colors placeholder:text-ink-muted hover:border-brand-300 focus:border-brand-500 focus:outline-none focus-visible:outline-none"
+      />
+      <div id="search-status" class="sr-only" role="status" aria-live="polite"></div>
+      <ul id="search-results" class="mt-3 space-y-1 empty:mt-0"></ul>
+      <p id="search-empty" class="mt-3 hidden text-sm text-ink-muted">
+        Aucune commune de ce nom. Elle compte peut-être moins de 50 ventes sur deux ans, le seuil
+        en dessous duquel aucun prix n'est publié.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-14 border-t border-hairline pt-10">
+    <h2 class="text-xl font-semibold">Les plus grandes villes</h2>
+    <ul class="mt-5 grid gap-x-8 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
       {
-        departments.map((department) => (
-          <li>
+        biggestCities.map((commune) => (
+          <li class="flex items-baseline justify-between gap-3 border-b border-hairline py-2 text-sm">
             <a
-              href={`/prix-immobilier-departement-${department.slug}`}
-              class="flex items-baseline justify-between gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+              class="font-medium underline decoration-brand-300 underline-offset-4 hover:text-brand-600"
+              href={`/prix-immobilier-${commune.slug}`}
             >
-              <span>
-                <span class="font-medium">{department.name}</span>
-                <span class="ml-1.5 text-xs text-ink-muted tabular">{department.code}</span>
-              </span>
-              <span class="shrink-0 text-xs text-ink-secondary tabular">
-                {formatCount(department.communes.length)}
-              </span>
+              {commune.name}
             </a>
+            <span class="shrink-0 text-ink-secondary tabular">
+              {formatPricePerSqm(commune.recent[publishedTypes(commune)[0]].pricePerSqm)}
+            </span>
           </li>
         ))
       }
     </ul>
   </section>
 
-  <section class="mt-10 rounded-xl border border-hairline bg-surface p-6">
-    <h2 class="text-base font-semibold">Ce que vous ne trouverez pas ici</h2>
-    <ul class="mt-3 space-y-2 text-sm text-ink-secondary">
+  <section class="mt-14 border-t border-hairline pt-10">
+    <h2 class="text-xl font-semibold">Tous les départements</h2>
+    <p class="mt-2 text-sm text-ink-secondary">
+      Le nombre entre parenthèses indique combien de communes du département atteignent le seuil de
+      publication.
+    </p>
+
+    <div class="mt-8 space-y-10">
+      {
+        regions.map((region) => (
+          <div>
+            <h3 class="text-sm font-semibold text-ink-secondary">{region.name}</h3>
+            <ul class="mt-3 grid gap-x-8 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+              {region.departments.map((department) => (
+                <li class="flex items-baseline justify-between gap-3 border-b border-hairline py-2 text-sm">
+                  <a
+                    class="underline decoration-hairline underline-offset-4 hover:text-brand-600 hover:decoration-brand-300"
+                    href={`/prix-immobilier-departement-${department.slug}`}
+                  >
+                    {department.name}
+                    <span class="ml-1.5 text-xs text-ink-muted tabular">{department.code}</span>
+                  </a>
+                  <span class="shrink-0 text-xs text-ink-muted tabular">
+                    {formatCount(department.communes.length)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="mt-14 rounded-xl border border-hairline bg-surface p-6 sm:p-8">
+    <h2 class="text-xl font-semibold">Ce que vous ne trouverez pas ici</h2>
+    <ul class="mt-4 space-y-3 text-sm leading-relaxed text-ink-secondary">
       <li>
         <strong class="font-medium text-ink">Les communes de moins de 50 ventes.</strong> En deçà,
-        la marge d'erreur sur la médiane dépasse 10 %. Publier le chiffre reviendrait à inventer
-        une précision qui n'existe pas.
+        la marge d'erreur dépasse 10 %. Afficher le chiffre reviendrait à inventer une précision
+        qui n'existe pas.
       </li>
       <li>
-        <strong class="font-medium text-ink">Quatre départements.</strong> {missing.join(', ')} ne
-        figurent pas dans les données ouvertes DVF : ils relèvent du livre foncier, un régime
-        distinct.
+        <strong class="font-medium text-ink">Le Bas-Rhin, le Haut-Rhin, la Moselle et Mayotte.</strong>
+        Ces quatre départements relèvent du livre foncier et ne figurent pas dans les données
+        ouvertes.
       </li>
       <li>
-        <strong class="font-medium text-ink">Les transactions individuelles.</strong> La loi
-        interdit de les exposer commune par commune. Seuls des agrégats sont publiés.
+        <strong class="font-medium text-ink">Les ventes une par une.</strong> La loi interdit de les
+        exposer. Seuls des agrégats communaux sont publiés.
       </li>
     </ul>
   </section>
 </Base>
+
+<script>
+  // Progressive enhancement: without JS the region lists below are the way in,
+  // so the search box simply stays inert rather than breaking the page.
+  const input = document.querySelector('#commune-search')
+  const results = document.querySelector('#search-results')
+  const empty = document.querySelector('#search-empty')
+  const status = document.querySelector('#search-status')
+
+  const MAX_RESULTS = 8
+  let index = null
+  let pending = null
+
+  const load = () => (pending ??= fetch('/search-index.json').then((r) => r.json()))
+
+  const normalise = (value) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+
+  const render = (matches, query) => {
+    results.replaceChildren()
+    empty.classList.toggle('hidden', matches.length > 0 || query.length < 2)
+
+    for (const match of matches) {
+      const item = document.createElement('li')
+      const link = document.createElement('a')
+      link.href = `/prix-immobilier-${match.s}`
+      link.className =
+        'flex items-baseline justify-between gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100'
+
+      const name = document.createElement('span')
+      name.className = 'font-medium'
+      name.textContent = match.n
+      const dept = document.createElement('span')
+      dept.className = 'ml-1.5 text-xs text-ink-muted'
+      dept.textContent = match.d
+      name.append(dept)
+
+      const price = document.createElement('span')
+      price.className = 'shrink-0 text-ink-secondary'
+      price.textContent = `${match.p.toLocaleString('fr-FR')} €/m²`
+
+      link.append(name, price)
+      item.append(link)
+      results.append(item)
+    }
+
+    status.textContent =
+      query.length < 2
+        ? ''
+        : matches.length === 0
+          ? 'Aucune commune trouvée.'
+          : `${matches.length} commune${matches.length > 1 ? 's' : ''} proposée${matches.length > 1 ? 's' : ''}.`
+  }
+
+  const search = async () => {
+    const query = normalise(input.value)
+    if (query.length < 2) {
+      render([], query)
+      return
+    }
+
+    index ??= await load()
+    // Prefix matches first: someone typing "sain" wants Saint-Denis before
+    // Le Plessis-Saint-Benoist.
+    const prefix = []
+    const inner = []
+    for (const commune of index) {
+      if (commune.q.startsWith(query)) prefix.push(commune)
+      else if (commune.q.includes(query)) inner.push(commune)
+    }
+    render([...prefix, ...inner].slice(0, MAX_RESULTS), query)
+  }
+
+  input.addEventListener('focus', load, { once: true })
+  input.addEventListener('input', search)
+</script>

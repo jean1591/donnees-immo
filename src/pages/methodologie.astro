@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 
-const title = 'Méthodologie — comment ces prix sont calculés | donnees-immo.fr'
+const title = 'Méthodologie — comment ces prix sont calculés'
 const description =
   'Source, périmètre, déduplication, seuil de publication et limites connues des prix immobiliers publiés sur donnees-immo.fr.'
 ---
@@ -10,12 +10,12 @@ const description =
 <Base title={title} description={description}>
   <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: 'Méthodologie' }]} />
 
-  <h1 class="mt-4 text-3xl font-semibold sm:text-4xl">Méthodologie</h1>
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">Méthodologie</h1>
 
-  <div class="mt-6 max-w-2xl space-y-8 text-ink-secondary">
+  <div class="mt-8 max-w-2xl space-y-12 text-ink-secondary">
     <section>
-      <h2 class="text-base font-semibold text-ink">La source</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">La source</h2>
+      <p class="mt-3 leading-relaxed">
         Les chiffres proviennent des « Demandes de valeurs foncières géolocalisées », publiées par
         Etalab à partir des données de la Direction générale des finances publiques. Chaque ligne
         correspond à une mutation enregistrée par l'administration fiscale : ce sont des ventes
@@ -23,15 +23,15 @@ const description =
         <strong class="font-medium text-ink"> 1<sup>er</sup> janvier 2021 au 31 décembre 2025</strong>,
         soit 20,4 millions de lignes.
       </p>
-      <p class="mt-2 leading-relaxed">
+      <p class="mt-3 leading-relaxed">
         Quatre départements en sont absents : le Bas-Rhin, le Haut-Rhin, la Moselle et Mayotte, qui
         relèvent du livre foncier et non du fichier immobilier.
       </p>
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Une vente, plusieurs lignes</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Une vente, plusieurs lignes</h2>
+      <p class="mt-3 leading-relaxed">
         Une même vente apparaît en moyenne sur 2,8 lignes — une par lot, par parcelle ou par local.
         Toutes les lignes d'une même mutation sont regroupées avant le moindre calcul, sinon les
         volumes seraient triplés.
@@ -39,8 +39,8 @@ const description =
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Quelles ventes sont comptées</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Quelles ventes sont comptées</h2>
+      <p class="mt-3 leading-relaxed">
         Seules les mutations portant sur <strong class="font-medium text-ink">un seul logement</strong>
         — une maison ou un appartement — entrent dans le calcul. Les dépendances, caves et places de
         parking vendues avec le logement ne comptent pas comme des biens supplémentaires, mais un
@@ -50,13 +50,13 @@ const description =
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Médiane, jamais moyenne</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Médiane, jamais moyenne</h2>
+      <p class="mt-3 leading-relaxed">
         Environ 7 % des mutations affichent un prix au mètre carré sans rapport avec le marché :
         ventes en nue-propriété, ventes entre proches, biens en ruine. Les DVF ne permettent pas de
         les identifier — ni l'état du bien ni le lien entre les parties n'y figurent.
       </p>
-      <p class="mt-2 leading-relaxed">
+      <p class="mt-3 leading-relaxed">
         La médiane y résiste : retirer les percentiles extrêmes ne déplace pas la médiane communale
         d'un seul euro. C'est pourquoi seules des médianes sont publiées, jamais des moyennes ni des
         minimums et maximums, qui seraient eux directement faussés.
@@ -64,8 +64,8 @@ const description =
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Le seuil de 50 ventes</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Le seuil de 50 ventes</h2>
+      <p class="mt-3 leading-relaxed">
         La précision d'une médiane dépend du nombre de ventes qui la composent. Marge d'erreur
         mesurée :
       </p>
@@ -111,8 +111,8 @@ const description =
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">La fenêtre de 24 mois</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">La fenêtre de 24 mois</h2>
+      <p class="mt-3 leading-relaxed">
         Le chiffre principal porte sur 2024 et 2025. Agréger les cinq années mélangerait le pic
         post-Covid et le creux de 2024, et produirait un prix qui ne correspond à aucun marché réel.
         Les cinq années ne servent qu'aux séries temporelles et aux répartitions structurelles.
@@ -120,8 +120,8 @@ const description =
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Ce que ces chiffres ne disent pas</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Ce que ces chiffres ne disent pas</h2>
+      <p class="mt-3 leading-relaxed">
         Les DVF ignorent l'état du bien, l'étage, l'exposition, la présence d'un ascenseur ou la
         qualité du quartier. Deux appartements de même surface dans la même commune peuvent
         légitimement s'échanger du simple au double. Une médiane communale situe un marché, elle
@@ -130,8 +130,8 @@ const description =
     </section>
 
     <section>
-      <h2 class="text-base font-semibold text-ink">Mise à jour</h2>
-      <p class="mt-2 leading-relaxed">
+      <h2 class="text-xl font-semibold text-ink">Mise à jour</h2>
+      <p class="mt-3 leading-relaxed">
         Les DVF sont republiées deux fois par an, en avril et en octobre. Le site est recalculé à
         chaque publication.
       </p>

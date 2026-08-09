@@ -25,6 +25,9 @@ export const formatEuro = (value) => euro.format(value)
 
 export const formatPricePerSqm = (value) => `${euro.format(value)}/m²`
 
+/** Prose variant: « 4 167 € le m² » reads better mid-sentence than « €/m² ». */
+export const formatPricePerSqmProse = (value) => `${euro.format(value)} le m²`
+
 export const formatArea = (value) => `${integer.format(value)} m²`
 
 export const formatCount = (value) => integer.format(value)
