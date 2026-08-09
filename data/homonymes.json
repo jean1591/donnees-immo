@@ -1,0 +1,392 @@
+{
+  "saint-michel": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "02684",
+        "name": "Saint-Michel",
+        "department": "02"
+      },
+      {
+        "code": "16341",
+        "name": "Saint-Michel",
+        "department": "16"
+      }
+    ]
+  },
+  "la-trinite": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "06149",
+        "name": "La Trinité",
+        "department": "06"
+      },
+      {
+        "code": "97230",
+        "name": "La Trinité",
+        "department": "972"
+      }
+    ]
+  },
+  "canet": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "11067",
+        "name": "Canet",
+        "department": "11"
+      },
+      {
+        "code": "34051",
+        "name": "Canet",
+        "department": "34"
+      }
+    ]
+  },
+  "breuillet": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "17064",
+        "name": "Breuillet",
+        "department": "17"
+      },
+      {
+        "code": "91105",
+        "name": "Breuillet",
+        "department": "91"
+      }
+    ]
+  },
+  "perigny": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "17274",
+        "name": "Périgny",
+        "department": "17"
+      },
+      {
+        "code": "94056",
+        "name": "Périgny",
+        "department": "94"
+      }
+    ]
+  },
+  "saint-vallier": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "26333",
+        "name": "Saint-Vallier",
+        "department": "26"
+      },
+      {
+        "code": "71486",
+        "name": "Saint-Vallier",
+        "department": "71"
+      }
+    ]
+  },
+  "valence": {
+    "winner": "26362",
+    "candidates": [
+      {
+        "code": "26362",
+        "name": "Valence",
+        "department": "26"
+      },
+      {
+        "code": "82186",
+        "name": "Valence",
+        "department": "82"
+      }
+    ]
+  },
+  "breteuil": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "27112",
+        "name": "Breteuil",
+        "department": "27"
+      },
+      {
+        "code": "60104",
+        "name": "Breteuil",
+        "department": "60"
+      }
+    ]
+  },
+  "amilly": {
+    "winner": "45004",
+    "candidates": [
+      {
+        "code": "28006",
+        "name": "Amilly",
+        "department": "28"
+      },
+      {
+        "code": "45004",
+        "name": "Amilly",
+        "department": "45"
+      }
+    ]
+  },
+  "vernouillet": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "28404",
+        "name": "Vernouillet",
+        "department": "28"
+      },
+      {
+        "code": "78643",
+        "name": "Vernouillet",
+        "department": "78"
+      }
+    ]
+  },
+  "plouhinec": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "29197",
+        "name": "Plouhinec",
+        "department": "29"
+      },
+      {
+        "code": "56169",
+        "name": "Plouhinec",
+        "department": "56"
+      }
+    ]
+  },
+  "les-angles": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "30011",
+        "name": "Les Angles",
+        "department": "30"
+      },
+      {
+        "code": "66004",
+        "name": "Les Angles",
+        "department": "66"
+      }
+    ]
+  },
+  "saint-gilles": {
+    "winner": "30258",
+    "candidates": [
+      {
+        "code": "30258",
+        "name": "Saint-Gilles",
+        "department": "30"
+      },
+      {
+        "code": "35275",
+        "name": "Saint-Gilles",
+        "department": "35"
+      }
+    ]
+  },
+  "merville": {
+    "winner": "59400",
+    "candidates": [
+      {
+        "code": "31341",
+        "name": "Merville",
+        "department": "31"
+      },
+      {
+        "code": "59400",
+        "name": "Merville",
+        "department": "59"
+      }
+    ]
+  },
+  "bassens": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "33032",
+        "name": "Bassens",
+        "department": "33"
+      },
+      {
+        "code": "73031",
+        "name": "Bassens",
+        "department": "73"
+      }
+    ]
+  },
+  "saint-savin": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "33473",
+        "name": "Saint-Savin",
+        "department": "33"
+      },
+      {
+        "code": "38455",
+        "name": "Saint-Savin",
+        "department": "38"
+      }
+    ]
+  },
+  "saint-ouen": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "41226",
+        "name": "Saint-Ouen",
+        "department": "41"
+      },
+      {
+        "code": "80711",
+        "name": "Saint-Ouen",
+        "department": "80"
+      }
+    ]
+  },
+  "nozay": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "44113",
+        "name": "Nozay",
+        "department": "44"
+      },
+      {
+        "code": "91458",
+        "name": "Nozay",
+        "department": "91"
+      }
+    ]
+  },
+  "saint-nazaire": {
+    "winner": "44184",
+    "candidates": [
+      {
+        "code": "44184",
+        "name": "Saint-Nazaire",
+        "department": "44"
+      },
+      {
+        "code": "66186",
+        "name": "Saint-Nazaire",
+        "department": "66"
+      }
+    ]
+  },
+  "oree-d-anjou": {
+    "winner": "49069",
+    "candidates": [
+      {
+        "code": "49069",
+        "name": "Orée d'Anjou",
+        "department": "49"
+      },
+      {
+        "code": "49126",
+        "name": "Orée d'Anjou",
+        "department": "49"
+      }
+    ]
+  },
+  "change": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "53054",
+        "name": "Changé",
+        "department": "53"
+      },
+      {
+        "code": "72058",
+        "name": "Changé",
+        "department": "72"
+      }
+    ]
+  },
+  "saint-andre": {
+    "winner": "97409",
+    "candidates": [
+      {
+        "code": "66168",
+        "name": "Saint-André",
+        "department": "66"
+      },
+      {
+        "code": "97409",
+        "name": "Saint-André",
+        "department": "974"
+      }
+    ]
+  },
+  "grigny": {
+    "winner": "91286",
+    "candidates": [
+      {
+        "code": "69096",
+        "name": "Grigny",
+        "department": "69"
+      },
+      {
+        "code": "91286",
+        "name": "Grigny",
+        "department": "91"
+      }
+    ]
+  },
+  "vouille": {
+    "winner": null,
+    "candidates": [
+      {
+        "code": "79355",
+        "name": "Vouillé",
+        "department": "79"
+      },
+      {
+        "code": "86294",
+        "name": "Vouillé",
+        "department": "86"
+      }
+    ]
+  },
+  "saint-benoit": {
+    "winner": "97410",
+    "candidates": [
+      {
+        "code": "86214",
+        "name": "Saint-Benoît",
+        "department": "86"
+      },
+      {
+        "code": "97410",
+        "name": "Saint-Benoît",
+        "department": "974"
+      }
+    ]
+  },
+  "saint-denis": {
+    "winner": "93066",
+    "candidates": [
+      {
+        "code": "93066",
+        "name": "Saint-Denis",
+        "department": "93"
+      },
+      {
+        "code": "97411",
+        "name": "Saint-Denis",
+        "department": "974"
+      }
+    ]
+  }
+}
