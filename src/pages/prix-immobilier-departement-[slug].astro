@@ -6,7 +6,7 @@ import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 import { departments } from '../lib/departments.js'
 import { publishedTypes } from '../lib/communes.js'
-import { formatCount, formatPricePerSqm } from '../lib/format.js'
+import { formatCount, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
 
 export function getStaticPaths() {
   return departments.map((department) => ({
@@ -42,7 +42,7 @@ const extremes =
   ranked.length >= 10
     ? {
         type: rankingType,
-        label: rankingType === 'house' ? 'maison' : 'appartement',
+        label: TYPE_LABELS[rankingType].definite,
         highest: ranked.slice(0, 5),
         lowest: ranked.slice(-5).reverse(),
       }
@@ -118,8 +118,8 @@ const extremes =
     extremes && (
       <section class="my-14 grid gap-6 md:grid-cols-2">
         {[
-          { heading: `Où la ${extremes.label} coûte le plus cher`, list: extremes.highest },
-          { heading: `Où la ${extremes.label} coûte le moins cher`, list: extremes.lowest },
+          { heading: `Où ${extremes.label} coûte le plus cher`, list: extremes.highest },
+          { heading: `Où ${extremes.label} coûte le moins cher`, list: extremes.lowest },
         ].map((block) => (
           <div class="rounded-xl border border-hairline bg-surface p-6">
             <h2 class="text-base font-semibold">{block.heading}</h2>

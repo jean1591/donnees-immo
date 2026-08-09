@@ -55,6 +55,9 @@ export const TYPE_LABELS = {
     plural: 'appartements',
     title: 'Appartements',
     article: 'un',
+    // Elision means the definite form cannot be assembled from an article and
+    // a noun by concatenation — « l'appartement », not « le appartement ».
+    definite: "l'appartement",
     feminine: false,
   },
   house: {
@@ -62,6 +65,7 @@ export const TYPE_LABELS = {
     plural: 'maisons',
     title: 'Maisons',
     article: 'une',
+    definite: 'la maison',
     feminine: true,
   },
 }
