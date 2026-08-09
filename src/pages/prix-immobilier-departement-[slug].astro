@@ -42,7 +42,9 @@ const extremes =
   ranked.length >= 10
     ? {
         type: rankingType,
-        label: TYPE_LABELS[rankingType].definite,
+        // Plural noun, no article: it sits in a caption rather than a
+        // sentence, which sidesteps gender and elision entirely.
+        label: TYPE_LABELS[rankingType].plural,
         highest: ranked.slice(0, 5),
         lowest: ranked.slice(-5).reverse(),
       }
@@ -118,11 +120,14 @@ const extremes =
     extremes && (
       <section class="my-14 grid gap-6 md:grid-cols-2">
         {[
-          { heading: `Où ${extremes.label} coûte le plus cher`, list: extremes.highest },
-          { heading: `Où ${extremes.label} coûte le moins cher`, list: extremes.lowest },
+          { heading: 'Les communes les plus chères', list: extremes.highest },
+          { heading: 'Les communes les plus abordables', list: extremes.lowest },
         ].map((block) => (
           <div class="rounded-xl border border-hairline bg-surface p-6">
             <h2 class="text-base font-semibold">{block.heading}</h2>
+            <p class="mt-1 text-xs text-ink-muted">
+              Prix médian au m², {extremes.label}
+            </p>
             <ol class="mt-4 space-y-1">
               {block.list.map((commune) => (
                 <li class="flex items-baseline justify-between gap-3 border-b border-hairline py-2 text-sm last:border-0">
