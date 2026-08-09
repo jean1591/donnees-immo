@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://donnees-immo.fr/sitemap-index.xml
+Sitemap: https://donnees-immo.fr/sitemap.xml
