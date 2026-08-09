@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+/*
+ * Cream plane, pastel orange accent. The two series hues (orange for
+ * apartments, blue for houses) are validated against the cream surface:
+ * CVD ΔE 21.4 · normal-vision ΔE 28.7 · contrast >= 3:1.
+ * Re-run the dataviz palette validator before changing any of them.
+ */
+@theme {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Surfaces */
+  --color-plane: #faf5ec; /* page plane */
+  --color-surface: #fdfaf4; /* cards, chart surface */
+  --color-surface-sunk: #f3ebdc; /* recessed areas, table headers */
+
+  /* Ink */
+  --color-ink: #1c1815;
+  --color-ink-secondary: #5a5249;
+  --color-ink-muted: #8b8175;
+
+  /* Rules */
+  --color-hairline: #e8e0d2;
+  --color-baseline: #d6ccba;
+
+  /* Brand — pastel orange for fills, darker steps for text */
+  --color-brand-100: #fbeadb;
+  --color-brand-200: #f6d5ba;
+  --color-brand-300: #f0bd93;
+  --color-brand-400: #e2913f;
+  --color-brand-500: #cf6a26;
+  --color-brand-600: #b0561c;
+  --color-brand-700: #8c4315;
+
+  /* Data series */
+  --color-series-apartment: #cf6a26;
+  --color-series-house: #2a6fb0;
+
+  /* Semantic — price up/down, never carried by color alone */
+  --color-up: #a8471a;
+  --color-down: #1f6b4a;
+}
+
+html {
+  background-color: var(--color-plane);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  text-wrap: pretty;
+}
+
+/* Large headings: tightened tracking, short leading. */
+h1,
+h2 {
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+/* Vertically aligned figures (tables, axis ticks) get tabular widths; large
+   standalone numbers keep proportional ones. */
+table,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Lit les tables d'agrégats de etl/dvf.db et produit data/communes.json.
-// Ne tourne qu'en local, deux fois par an, après 03-aggregate.sql.
+// Reads the aggregate tables from etl/dvf.db and writes data/communes.json.
+// Local only, twice a year, after 03-aggregate.sql.
 //
 //   node etl/export.mjs
 //
-// Effets de bord : écrit data/communes.json et, si de nouvelles collisions de
-// slug apparaissent, complète data/homonymes.json (jamais réécrit à zéro).
+// Side effects: writes data/communes.json and, when new slug collisions show
+// up, extends data/homonymes.json (never rewritten from scratch).
 
 import { DuckDBInstance } from '@duckdb/node-api'
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs'
@@ -14,22 +14,22 @@ import { dirname, join } from 'node:path'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DB = join(ROOT, 'etl', 'dvf.db')
-const DEPARTEMENTS = join(ROOT, 'data', 'departements.json')
-const HOMONYMES = join(ROOT, 'data', 'homonymes.json')
+const DEPARTMENTS_FILE = join(ROOT, 'data', 'departements.json')
+const HOMONYMS_FILE = join(ROOT, 'data', 'homonymes.json')
 const OUT = join(ROOT, 'data', 'communes.json')
 
-// Seuil de publication : en dessous, la marge d'erreur sur la médiane dépasse
-// 10 % (cf. CLAUDE.md). Une commune est retenue sur son type le plus vendu,
-// mais chaque bloc de type est publié séparément sous la même règle.
+// Publication threshold: below this the margin of error on the median exceeds
+// 10 % (see CLAUDE.md). A commune is kept on its best-selling type, but each
+// type block is published under the same rule.
 const MIN_SALES = 50
 
-// Codes INSEE des trois villes reconstituées à partir des arrondissements.
+// INSEE codes of the three cities rebuilt from their arrondissements.
 const CITY_CODES = new Set(['75056', '69123', '13055'])
 
-// Qui récupère le slug nu quand plusieurs communes le revendiquent. La valeur
-// est un code de département, ou un code INSEE quand les candidats partagent
-// le même département. Ces choix sont figés dans data/homonymes.json au
-// premier passage : les modifier après indexation casse les URLs.
+// Who gets the bare slug when several communes claim it. The value is either a
+// department code, or an INSEE code when the candidates share a department.
+// These are frozen into data/homonymes.json on first run: changing them after
+// indexing breaks live URLs.
 const DEFAULT_ARBITRATIONS = {
   valence: '26',
   'saint-denis': '93',
@@ -47,9 +47,9 @@ const DEFAULT_ARBITRATIONS = {
 
 const TYPES = { Appartement: 'apartment', Maison: 'house' }
 
-// --- utilitaires ------------------------------------------------------------
+// --- helpers ----------------------------------------------------------------
 
-// DuckDB renvoie les BIGINT en BigInt et les DOUBLE en number.
+// DuckDB returns BIGINT as BigInt and DOUBLE as number.
 const num = (v) => (v === null || v === undefined ? null : Number(v))
 
 const slugify = (name) =>
@@ -73,7 +73,7 @@ const groupBy = (rows, key) => {
   return map
 }
 
-// --- lecture de la base -----------------------------------------------------
+// --- read the database ------------------------------------------------------
 
 const instance = await DuckDBInstance.create(DB, { access_mode: 'READ_ONLY' })
 const connection = await instance.connect()
@@ -83,10 +83,10 @@ const query = async (sql) => {
   return reader.getRowObjects()
 }
 
-// Les tables *_villes portent Paris/Lyon/Marseille reconstitués depuis les
-// ventes, pas une moyenne des arrondissements. Elles s'ajoutent aux
-// arrondissements, qui gardent leurs propres pages.
-const [recent, yearly, rooms] = await Promise.all([
+// The *_villes tables hold Paris/Lyon/Marseille recomputed from the sales, not
+// averaged from their arrondissements. They sit alongside the arrondissements,
+// which keep their own pages.
+const [recentRows, yearlyRows, roomRows] = await Promise.all([
   query(`SELECT code_commune, nom_commune, code_departement, type_local, n,
                 prix_m2_median, prix_m2_d1, prix_m2_q1, prix_m2_q3, prix_m2_d9,
                 prix_median, surface_mediane
@@ -111,21 +111,21 @@ const [recent, yearly, rooms] = await Promise.all([
 connection.closeSync()
 instance.closeSync()
 
-// --- sélection des communes -------------------------------------------------
+// --- select communes --------------------------------------------------------
 
-const departements = readJson(DEPARTEMENTS)
-const recentByCommune = groupBy(recent, (r) => r.code_commune)
+const departments = readJson(DEPARTMENTS_FILE)
+const recentByCommune = groupBy(recentRows, (r) => r.code_commune)
 
 const selected = []
-const unknownDepartements = new Set()
+const unknownDepartments = new Set()
 
 for (const [code, rows] of recentByCommune) {
   const maxSales = Math.max(...rows.map((r) => num(r.n)))
   if (maxSales < MIN_SALES) continue
 
-  const departement = departements[rows[0].code_departement]
-  if (!departement) {
-    unknownDepartements.add(rows[0].code_departement)
+  const department = departments[rows[0].code_departement]
+  if (!department) {
+    unknownDepartments.add(rows[0].code_departement)
     continue
   }
 
@@ -135,8 +135,8 @@ for (const [code, rows] of recentByCommune) {
     departmentCode: rows[0].code_departement,
     department: {
       code: rows[0].code_departement,
-      name: departement.nom,
-      slug: departement.slug,
+      name: department.nom,
+      slug: department.slug,
     },
     kind: CITY_CODES.has(code)
       ? 'city'
@@ -150,14 +150,14 @@ for (const [code, rows] of recentByCommune) {
 
 selected.sort((a, b) => a.code.localeCompare(b.code))
 
-// --- slugs et homonymes -----------------------------------------------------
+// --- slugs and homonyms -----------------------------------------------------
 
-// Deux communes peuvent partager un slug. Le suffixe départemental les
-// distingue, mais il faut encore décider qui garde le slug nu — c'est le rôle
-// de homonymes.json, qui n'est jamais recalculé : une réédition du fichier
-// après indexation changerait les URLs déjà référencées.
-const frozen = existsSync(HOMONYMES) ? readJson(HOMONYMES) : {}
-const homonymes = {}
+// Two communes can share a slug. The department suffix tells them apart, but
+// something still has to decide who keeps the bare slug — that is what
+// homonymes.json holds, and it is never recomputed: rewriting it after
+// indexing would change URLs that are already referenced.
+const frozen = existsSync(HOMONYMS_FILE) ? readJson(HOMONYMS_FILE) : {}
+const homonyms = {}
 const warnings = []
 const pendingArbitrations = []
 
@@ -165,8 +165,8 @@ const bySlug = groupBy(selected, (c) => slugify(c.name))
 
 for (const [slug, candidates] of bySlug) {
   const entry = frozen[slug]
-  // Un slug qui ne collisionne plus reste géré s'il a déjà été figé : sinon la
-  // commune survivante récupérerait le slug nu et son URL changerait.
+  // A slug that no longer collides stays managed once frozen: otherwise the
+  // surviving commune would reclaim the bare slug and change its URL.
   if (candidates.length < 2 && !entry) continue
 
   const descriptors = candidates
@@ -189,7 +189,7 @@ for (const [slug, candidates] of bySlug) {
       winner = null
       if (arbitration) {
         warnings.push(
-          `arbitrage "${slug}" -> ${arbitration} : ${matches.length} candidat(s), ignoré`
+          `arbitration "${slug}" -> ${arbitration}: ${matches.length} candidate(s), ignored`
         )
       }
       pendingArbitrations.push({ slug, candidates: descriptors })
@@ -198,50 +198,50 @@ for (const [slug, candidates] of bySlug) {
 
   if (winner && !candidates.some((c) => c.code === winner)) {
     warnings.push(
-      `homonymes.json : "${slug}" arbitré vers ${winner}, absent de l'export — slug nu non attribué`
+      `homonymes.json: "${slug}" arbitrated to ${winner}, which is not in the export — bare slug left unassigned`
     )
   }
 
-  homonymes[slug] = { winner, candidates: descriptors }
+  homonyms[slug] = { winner, candidates: descriptors }
 }
 
 for (const [slug, entry] of Object.entries(frozen)) {
-  if (!homonymes[slug]) {
-    // On conserve les entrées orphelines : la commune peut repasser au-dessus
-    // du seuil à la prochaine publication et doit retrouver la même URL.
-    homonymes[slug] = entry
-    warnings.push(`homonymes.json : "${slug}" n'a plus de commune exportée, entrée conservée`)
+  if (!homonyms[slug]) {
+    // Orphaned entries are kept: the commune may clear the threshold again in
+    // a later release and must get the same URL back.
+    homonyms[slug] = entry
+    warnings.push(`homonymes.json: "${slug}" has no exported commune left, entry kept`)
   }
 }
 
 for (const commune of selected) {
   const slug = slugify(commune.name)
-  const entry = homonymes[slug]
+  const entry = homonyms[slug]
   commune.slug =
     !entry || entry.winner === commune.code
       ? slug
       : `${slug}-${commune.departmentCode.toLowerCase()}`
 }
 
-// Filet de sécurité : deux homonymes du même département (Orée d'Anjou, où DVF
-// étiquette une commune déléguée du nom de la commune nouvelle) restent en
-// collision après suffixe départemental. On suffixe alors par code INSEE.
+// Safety net: two homonyms in the same department (Orée d'Anjou, where DVF
+// labels a delegated commune with the name of the commune nouvelle) still
+// collide after the department suffix. Fall back to the INSEE code.
 const finalSlugs = groupBy(selected, (c) => c.slug)
 for (const [slug, candidates] of finalSlugs) {
   if (candidates.length < 2) continue
   for (const commune of candidates) {
     commune.slug = `${slug}-${commune.code}`
-    warnings.push(`collision résiduelle sur "${slug}" -> ${commune.slug} (${commune.name})`)
+    warnings.push(`residual collision on "${slug}" -> ${commune.slug} (${commune.name})`)
   }
 }
 
-// --- assemblage --------------------------------------------------------------
+// --- assemble ----------------------------------------------------------------
 
-const yearlyByCommune = groupBy(yearly, (r) => r.code_commune)
-const roomsByCommune = groupBy(rooms, (r) => r.code_commune)
+const yearlyByCommune = groupBy(yearlyRows, (r) => r.code_commune)
+const roomsByCommune = groupBy(roomRows, (r) => r.code_commune)
 
-// Un bloc vide signale explicitement "pas de donnée publiable", là où une clé
-// absente laisserait planer le doute sur un export incomplet.
+// An empty block explicitly means "nothing publishable here", where a missing
+// key would leave the reader wondering whether the export went wrong.
 const buildRecent = (rows) => {
   const out = { apartment: {}, house: {} }
   for (const row of rows) {
@@ -301,9 +301,9 @@ const communes = selected.map((commune) => ({
   rooms: buildRooms(roomsByCommune.get(commune.code)),
 }))
 
-// --- écriture ----------------------------------------------------------------
+// --- write -------------------------------------------------------------------
 
-writeJsonIfChanged(HOMONYMES, homonymes, 2)
+writeJsonIfChanged(HOMONYMS_FILE, homonyms, 2)
 writeFileSync(OUT, JSON.stringify(communes))
 
 function writeJsonIfChanged(path, value, indent) {
@@ -312,7 +312,7 @@ function writeJsonIfChanged(path, value, indent) {
   writeFileSync(path, next)
 }
 
-// --- rapport -----------------------------------------------------------------
+// --- report ------------------------------------------------------------------
 
 const count = (kind) => communes.filter((c) => c.kind === kind).length
 const bytes = statSync(OUT).size
@@ -320,33 +320,33 @@ const withHouse = communes.filter((c) => c.recent.house.count).length
 const withApartment = communes.filter((c) => c.recent.apartment.count).length
 
 console.log(`\ndata/communes.json`)
-console.log(`  communes exportées : ${communes.length}`)
-console.log(`    dont communes         : ${count('commune')}`)
-console.log(`    dont arrondissements  : ${count('arrondissement')}`)
-console.log(`    dont villes agrégées  : ${count('city')}`)
-console.log(`  avec médiane appartement : ${withApartment}`)
-console.log(`  avec médiane maison      : ${withHouse}`)
-console.log(`  taille : ${(bytes / 1024 / 1024).toFixed(2)} MB (${bytes.toLocaleString('fr-FR')} octets)`)
+console.log(`  communes exported : ${communes.length}`)
+console.log(`    communes           : ${count('commune')}`)
+console.log(`    arrondissements    : ${count('arrondissement')}`)
+console.log(`    aggregated cities  : ${count('city')}`)
+console.log(`  with an apartment median : ${withApartment}`)
+console.log(`  with a house median      : ${withHouse}`)
+console.log(`  size : ${(bytes / 1024 / 1024).toFixed(2)} MB (${bytes.toLocaleString('en-US')} bytes)`)
 
 console.log(`\ndata/homonymes.json`)
-console.log(`  slugs en collision : ${Object.keys(homonymes).length}`)
-console.log(`  arbitrés (slug nu attribué) : ${Object.values(homonymes).filter((e) => e.winner).length}`)
+console.log(`  colliding slugs : ${Object.keys(homonyms).length}`)
+console.log(`  arbitrated (bare slug assigned) : ${Object.values(homonyms).filter((e) => e.winner).length}`)
 
 if (pendingArbitrations.length) {
-  console.log(`\n  ${pendingArbitrations.length} slug(s) sans arbitrage — toutes les communes prennent le suffixe départemental :`)
+  console.log(`\n  ${pendingArbitrations.length} slug(s) without arbitration — every commune takes the department suffix:`)
   for (const { slug, candidates } of pendingArbitrations) {
     const detail = candidates.map((c) => `${c.name} (${c.department})`).join(' / ')
     console.log(`    ${slug} : ${detail}`)
   }
-  console.log(`  Renseigner "winner" dans data/homonymes.json pour attribuer le slug nu.`)
+  console.log(`  Set "winner" in data/homonymes.json to hand out the bare slug.`)
 }
 
-if (unknownDepartements.size) {
-  warnings.push(`département(s) inconnu(s) de departements.json, communes ignorées : ${[...unknownDepartements].join(', ')}`)
+if (unknownDepartments.size) {
+  warnings.push(`department(s) missing from departements.json, communes skipped: ${[...unknownDepartments].join(', ')}`)
 }
 
 if (warnings.length) {
-  console.log(`\nAvertissements :`)
+  console.log(`\nWarnings:`)
   for (const warning of warnings) console.log(`  - ${warning}`)
 }
 

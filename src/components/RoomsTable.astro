@@ -1,0 +1,63 @@
+---
+// Median price by room count, over 24 months. The sale count stays visible on
+// every row: some rows go as low as 10 sales.
+import { formatArea, formatCount, formatEuro, roomLabel, TYPE_LABELS } from '../lib/format.js'
+
+const { rooms, types } = Astro.props
+const tables = types.filter((type) => rooms[type].length > 0)
+---
+
+{
+  tables.length > 0 && (
+    <section class="my-8">
+      <h2 class="text-base font-semibold">Prix par nombre de pièces</h2>
+      <p class="mt-1 text-sm text-ink-secondary">
+        Prix de vente médian sur les 24 derniers mois, et non prix au mètre carré.
+      </p>
+
+      <div class="mt-5 grid gap-6 md:grid-cols-2">
+        {tables.map((type) => (
+          <div class="overflow-x-auto rounded-lg border border-hairline bg-surface">
+            <table class="w-full text-sm">
+              <caption class="border-b border-hairline px-4 py-2.5 text-left text-sm font-medium">
+                {TYPE_LABELS[type].title}
+              </caption>
+              <thead class="bg-surface-sunk text-xs text-ink-secondary">
+                <tr>
+                  <th scope="col" class="px-4 py-2 text-left font-medium">
+                    Type
+                  </th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">
+                    Prix médian
+                  </th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">
+                    Surface
+                  </th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">
+                    Ventes
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rooms[type].map((row) => (
+                  <tr class="border-t border-hairline">
+                    <th scope="row" class="px-4 py-2 text-left font-medium">
+                      {roomLabel(row.rooms, type)}
+                    </th>
+                    <td class="px-4 py-2 text-right">{formatEuro(row.medianPrice)}</td>
+                    <td class="px-4 py-2 text-right text-ink-secondary">
+                      {formatArea(row.medianArea)}
+                    </td>
+                    <td class="px-4 py-2 text-right text-ink-secondary">
+                      {formatCount(row.count)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}

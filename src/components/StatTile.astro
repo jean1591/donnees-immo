@@ -1,0 +1,74 @@
+---
+// Headline tile for one property type: the median price per sqm is the hero
+// figure, and the sale count always sits next to it — it drives the margin of
+// error, hence how much weight the median can carry.
+import { formatArea, formatCount, formatEuro, formatPercent, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
+import { evolution } from '../lib/communes.js'
+
+const { commune, type } = Astro.props
+const block = commune.recent[type]
+const label = TYPE_LABELS[type]
+
+const deltas = [
+  { span: 1, label: 'sur 1 an', value: evolution(commune, type, 1) },
+  { span: 5, label: 'sur 5 ans', value: evolution(commune, type, 5) },
+].filter((delta) => delta.value)
+
+const dotColor =
+  type === 'apartment' ? 'var(--color-series-apartment)' : 'var(--color-series-house)'
+---
+
+<section class="rounded-xl border border-hairline bg-surface p-6 shadow-[0_1px_3px_rgba(28,24,21,0.05)]">
+  <header class="flex items-baseline justify-between gap-4">
+    <h2 class="flex items-center gap-2 text-sm font-semibold">
+      <span class="inline-block h-2 w-2 rounded-full" style={`background:${dotColor}`} aria-hidden="true"></span>
+      {label.title}
+    </h2>
+    <span class="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-medium text-brand-700 tabular">
+      {formatCount(block.count)} ventes
+    </span>
+  </header>
+
+  <p class="mt-4 text-4xl font-semibold tracking-tight text-brand-600">
+    {formatPricePerSqm(block.pricePerSqm)}
+  </p>
+
+  <dl class="mt-4 grid grid-cols-2 gap-4 border-t border-hairline pt-4 text-sm">
+    <div>
+      <dt class="text-xs text-ink-muted">Prix médian</dt>
+      <dd class="mt-0.5 font-medium tabular">{formatEuro(block.medianPrice)}</dd>
+    </div>
+    <div>
+      <dt class="text-xs text-ink-muted">Surface médiane</dt>
+      <dd class="mt-0.5 font-medium tabular">{formatArea(block.medianArea)}</dd>
+    </div>
+  </dl>
+
+  {
+    deltas.length === 0 && (
+      <p class="mt-4 border-t border-hairline pt-4 text-xs text-ink-muted">
+        Trop peu de ventes chaque année pour publier une évolution : la variation d'une année sur
+        l'autre serait dominée par le hasard de l'échantillon.
+      </p>
+    )
+  }
+
+  {
+    deltas.length > 0 && (
+      <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-2 border-t border-hairline pt-4 text-sm">
+        {deltas.map((delta) => (
+          <div class="flex items-baseline gap-2">
+            <dt class="text-xs text-ink-muted">{delta.label}</dt>
+            <dd
+              class="flex items-baseline gap-1 font-medium tabular"
+              style={`color:${delta.value.ratio >= 0 ? 'var(--color-up)' : 'var(--color-down)'}`}
+            >
+              <span aria-hidden="true">{delta.value.ratio >= 0 ? '↑' : '↓'}</span>
+              {formatPercent(delta.value.ratio)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
+</section>

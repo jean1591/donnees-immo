@@ -1,0 +1,56 @@
+---
+// Accessible twin of the line chart: every plotted value is readable here,
+// without hover and without color.
+import { formatCount, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
+
+const { yearly, types } = Astro.props
+---
+
+<div class="overflow-x-auto rounded-lg border border-hairline bg-surface">
+  <table class="w-full text-sm">
+    <caption class="sr-only">
+      Prix médian au mètre carré et nombre de ventes, par année et par type de bien
+    </caption>
+    <thead class="bg-surface-sunk text-xs text-ink-secondary">
+      <tr>
+        <th scope="col" class="px-4 py-2.5 text-left font-medium">Année</th>
+        {
+          types.map((type) => (
+            <>
+              <th scope="col" class="px-4 py-2.5 text-right font-medium">
+                {TYPE_LABELS[type].title} €/m²
+              </th>
+              <th scope="col" class="px-4 py-2.5 text-right font-medium">
+                Ventes
+              </th>
+            </>
+          ))
+        }
+      </tr>
+    </thead>
+    <tbody>
+      {
+        yearly.map((entry) => (
+          <tr class="border-t border-hairline">
+            <th scope="row" class="px-4 py-2.5 text-left font-medium">
+              {entry.year}
+            </th>
+            {types.map((type) => (
+              <>
+                <td class="px-4 py-2.5 text-right">
+                  {entry[type]?.pricePerSqm ? formatPricePerSqm(entry[type].pricePerSqm) : '—'}
+                </td>
+                <td class="px-4 py-2.5 text-right text-ink-secondary">
+                  {entry[type]?.count ? formatCount(entry[type].count) : '—'}
+                </td>
+              </>
+            ))}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
+<p class="mt-2 text-xs text-ink-muted">
+  « — » signale une année comptant moins de 10 ventes, trop peu pour publier une médiane.
+</p>

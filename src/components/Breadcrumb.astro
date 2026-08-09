@@ -1,0 +1,22 @@
+---
+const { items } = Astro.props
+---
+
+<nav aria-label="Fil d'ariane" class="text-xs text-ink-muted">
+  <ol class="flex flex-wrap items-center gap-1.5">
+    {
+      items.map((item, index) => (
+        <li class="flex items-center gap-1.5">
+          {index > 0 && <span aria-hidden="true">/</span>}
+          {item.href ? (
+            <a class="underline decoration-hairline underline-offset-2 hover:text-brand-600" href={item.href}>
+              {item.label}
+            </a>
+          ) : (
+            <span aria-current="page">{item.label}</span>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>

@@ -1,0 +1,93 @@
+---
+// Department roll-up. The URL keeps an explicit `departement-` segment because
+// several department names are also commune names (Vienne, Aube…), so a shared
+// `/prix-immobilier-[slug]` route would collide.
+import Base from '../layouts/Base.astro'
+import Breadcrumb from '../components/Breadcrumb.astro'
+import { departments } from '../lib/departments.js'
+import { publishedTypes } from '../lib/communes.js'
+import { formatCount, formatPricePerSqm } from '../lib/format.js'
+
+export function getStaticPaths() {
+  return departments.map((department) => ({
+    params: { slug: department.slug },
+    props: { department },
+  }))
+}
+
+const { department } = Astro.props
+const communes = department.communes
+
+// Department names carry no gender or article in the dataset, so every
+// generated sentence goes through « le département X » rather than guessing
+// between « en Gironde », « dans le Rhône » and « aux Hauts-de-Seine ».
+const title = `Prix immobilier — ${department.name} (${department.code}), ${communes.length} communes | donnees-immo.fr`
+const description = `Prix immobilier dans le département ${department.name} (${department.code}) : médiane au m² pour ${communes.length} communes, calculée sur les ventes réellement enregistrées. Source DVF (DGFiP).`
+
+const cell = (commune, type) =>
+  commune.recent[type].count ? formatPricePerSqm(commune.recent[type].pricePerSqm) : '—'
+---
+
+<Base title={title} description={description}>
+  <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: department.name }]} />
+
+  <h1 class="mt-4 text-3xl font-semibold sm:text-4xl">
+    Prix immobilier — {department.name} ({department.code})
+  </h1>
+
+  <p class="mt-4 max-w-2xl text-lg leading-relaxed text-ink-secondary">
+    <strong class="font-semibold text-ink">{communes.length}</strong>
+    {communes.length > 1 ? ' communes' : ' commune'} de ce département comptent assez de ventes
+    pour publier un prix médian fiable sur les 24 derniers mois.
+  </p>
+
+  <p class="mt-4 max-w-2xl text-sm text-ink-muted">
+    Aucun prix médian n'est publié à l'échelle du département : il faudrait le recalculer sur
+    l'ensemble des ventes, et non moyenner les médianes communales, ce qui donnerait un chiffre
+    faux.
+  </p>
+
+  <div class="mt-8 overflow-x-auto rounded-lg border border-hairline bg-surface">
+    <table class="w-full text-sm">
+      <caption class="sr-only">
+        Prix médian au mètre carré par commune, sur 24 mois
+      </caption>
+      <thead class="bg-surface-sunk text-xs text-ink-secondary">
+        <tr>
+          <th scope="col" class="px-4 py-2.5 text-left font-medium">Commune</th>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">Appartement</th>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">Maison</th>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">Ventes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          communes.map((commune) => (
+            <tr class="border-t border-hairline">
+              <th scope="row" class="px-4 py-2.5 text-left font-medium">
+                <a
+                  class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+                  href={`/prix-immobilier-${commune.slug}`}
+                >
+                  {commune.name}
+                </a>
+              </th>
+              <td class="px-4 py-2.5 text-right">{cell(commune, 'apartment')}</td>
+              <td class="px-4 py-2.5 text-right">{cell(commune, 'house')}</td>
+              <td class="px-4 py-2.5 text-right text-ink-secondary">
+                {formatCount(
+                  publishedTypes(commune).reduce((sum, type) => sum + commune.recent[type].count, 0)
+                )}
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p class="mt-2 text-xs text-ink-muted">
+    « — » signale un type de bien comptant moins de 50 ventes sur 24 mois, trop peu pour publier
+    une médiane.
+  </p>
+</Base>

@@ -1,0 +1,59 @@
+---
+import '../styles/global.css'
+
+const { title, description, canonical } = Astro.props
+const href = canonical ?? new URL(Astro.url.pathname, Astro.site).href
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={href} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={href} />
+    <meta property="og:locale" content="fr_FR" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <slot name="head" />
+  </head>
+  <body class="min-h-screen bg-plane text-ink antialiased">
+    <header class="border-b border-hairline">
+      <div class="mx-auto flex max-w-4xl items-baseline justify-between px-4 py-4">
+        <a href="/" class="text-base font-semibold tracking-tight hover:text-brand-600">
+          donnees-immo<span class="text-brand-500">.fr</span>
+        </a>
+        <span class="text-xs text-ink-muted">Prix réels issus des ventes enregistrées</span>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-4xl px-4 py-8">
+      <slot />
+    </main>
+
+    <footer class="mt-16 border-t border-hairline">
+      <div class="mx-auto max-w-4xl space-y-3 px-4 py-8 text-xs text-ink-secondary">
+        <p>
+          Source : <a
+            class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+            href="https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres-geolocalisees"
+            target="_blank"
+            rel="noopener">Demandes de valeurs foncières géolocalisées</a
+          >, DGFiP via Etalab — Licence Ouverte 2.0. Données arrêtées au 31 décembre 2025.
+        </p>
+        <p>
+          Agrégats calculés commune par commune. Aucune transaction individuelle n'est publiée,
+          conformément à l'article R*112 A-3 du livre des procédures fiscales.
+        </p>
+        <nav class="flex gap-4 pt-1">
+          <a class="hover:text-brand-600" href="/methodologie">Méthodologie</a>
+          <a class="hover:text-brand-600" href="/mentions-legales">Mentions légales</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
