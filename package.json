@@ -1,0 +1,11 @@
+{
+  "name": "donnees-immo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "export": "node etl/export.mjs"
+  },
+  "devDependencies": {
+    "@duckdb/node-api": "^1.5.5-r.3"
+  }
+}
