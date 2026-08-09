@@ -15,8 +15,8 @@ const href = canonical ?? new URL(Astro.url.pathname, Astro.site).href
     <meta name="description" content={description} />
     <link rel="canonical" href={href} />
 
-    {/* Placeholder mark until the generated icon lands. No apple-touch-icon
-        reference yet — pointing at a missing PNG is worse than having none. */}
+    {/* No apple-touch-icon reference: that one has to be a PNG, and pointing
+        at a missing file is worse than declaring nothing. */}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#faf5ec" />
 
