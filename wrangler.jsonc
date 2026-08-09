@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "donnees-immo",
+  "compatibility_date": "2026-08-01",
+
+  // Assets-only Worker: there is no `main`, so every request is served
+  // straight from dist/ at the edge with no Worker invocation.
+  "assets": {
+    "directory": "./dist",
+
+    // The build emits prix-immobilier-bordeaux/index.html but every canonical
+    // tag, sitemap entry and internal link spells it without a trailing slash.
+    // "drop-trailing-slash" makes the edge agree: /foo/ redirects to /foo
+    // instead of serving the same page under two addresses.
+    "html_handling": "drop-trailing-slash",
+
+    // Serve dist/404.html for anything unmatched, with a 404 status.
+    "not_found_handling": "404-page"
+  }
+}
