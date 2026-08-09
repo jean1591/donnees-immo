@@ -162,12 +162,14 @@ const jsonLd = {
 
   const load = () => (pending ??= fetch('/search-index.json').then((r) => r.json()))
 
+  // Must match the `q` field built in search-index.json.js: separators are
+  // dropped, so a hyphen is optional everywhere.
   const normalise = (value) =>
     value
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
-      .trim()
+      .replace(/[^a-z0-9]/g, '')
 
   const render = (matches, query) => {
     results.replaceChildren()
@@ -213,15 +215,20 @@ const jsonLd = {
     }
 
     index ??= await load()
-    // Prefix matches first: someone typing "sain" wants Saint-Denis before
-    // Le Plessis-Saint-Benoist.
+    // Three tiers, each ordered by sale volume. Without the tiers the exact
+    // Saint-Denis ranks below Saint-Denis-lès-Bourg; without the volume sort
+    // results come out in INSEE code order, which means nothing to a reader.
+    const exact = []
     const prefix = []
     const inner = []
     for (const commune of index) {
-      if (commune.q.startsWith(query)) prefix.push(commune)
+      if (commune.q === query) exact.push(commune)
+      else if (commune.q.startsWith(query)) prefix.push(commune)
       else if (commune.q.includes(query)) inner.push(commune)
     }
-    render([...prefix, ...inner].slice(0, MAX_RESULTS), query)
+    const byVolume = (a, b) => b.v - a.v
+    const matches = [exact.sort(byVolume), prefix.sort(byVolume), inner.sort(byVolume)].flat()
+    render(matches.slice(0, MAX_RESULTS), query)
   }
 
   input.addEventListener('focus', load, { once: true })
