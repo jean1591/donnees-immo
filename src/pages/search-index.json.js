@@ -37,10 +37,15 @@ export function GET() {
     }
   })
 
+  // Cached forever, because the URL carries the release date: the homepage
+  // requests `?v=<releaseDate>`, so a new dataset is a new URL. A plain
+  // max-age would leave browsers holding a stale index after a refresh —
+  // the fetch fires on focus, long after the document loads, so a hard reload
+  // does not clear it.
   return new Response(JSON.stringify(index), {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'public, max-age=31536000, immutable',
     },
   })
 }

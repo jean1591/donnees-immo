@@ -160,7 +160,10 @@ const jsonLd = {
   let index = null
   let pending = null
 
-  const load = () => (pending ??= fetch('/search-index.json').then((r) => r.json()))
+  const load = () =>
+    (pending ??= fetch(
+      `/search-index.json?v=${document.documentElement.dataset.datasetVersion}`
+    ).then((r) => r.json()))
 
   // Must match the `q` field built in search-index.json.js: separators are
   // dropped, so a hyphen is optional everywhere.
