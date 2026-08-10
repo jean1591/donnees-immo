@@ -48,15 +48,26 @@ donnees-immo/
 │   ├── components/
 │   ├── layouts/
 │   └── lib/{slug.js,format.js}
-├── scripts/og-card.mjs     # renders public/og.png via headless Chrome
-└── public/{robots.txt,og.png}
+├── scripts/
+│   ├── og-card.mjs         # renders public/og.png via headless Chrome
+│   ├── favicon.mjs         # renders public/favicon.ico from favicon.svg
+│   └── indexnow.mjs        # pings IndexNow with the built sitemap
+└── public/{robots.txt,og.png,favicon.*,_headers,_redirects}
 ```
 
 `data/communes.json` is **committed**: the build must run without the DuckDB
 database. The ETL only runs twice a year, locally.
 
 `public/og.png` is committed for the same reason, and states the commune count,
-so it is regenerated in the same pass: `npm run export && npm run og`.
+so it is regenerated in the same pass. The twice-yearly ritual is:
+
+```
+npm run export && npm run og && npm run build
+git commit && git push          # Cloudflare builds and deploys from main
+npm run indexnow                # after the deploy, never before
+```
+
+`npm run favicon` is not part of it — only re-run it if `favicon.svg` changes.
 
 ## Data source
 

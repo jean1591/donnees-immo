@@ -8,7 +8,8 @@
     "preview": "astro preview",
     "export": "node etl/export.mjs",
     "og": "node scripts/og-card.mjs",
-    "favicon": "node scripts/favicon.mjs"
+    "favicon": "node scripts/favicon.mjs",
+    "indexnow": "node scripts/indexnow.mjs"
   },
   "devDependencies": {
     "@duckdb/node-api": "^1.5.5-r.3"
