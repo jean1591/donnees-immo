@@ -5,8 +5,13 @@
 import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 import { departments } from '../lib/departments.js'
-import { publishedTypes } from '../lib/communes.js'
-import { formatCount, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
+import { publishedTypes, rankByEvolution } from '../lib/communes.js'
+import {
+  formatCount,
+  formatPercent,
+  formatPricePerSqm,
+  TYPE_LABELS,
+} from '../lib/format.js'
 
 export function getStaticPaths() {
   return departments.map((department) => ({
@@ -49,9 +54,52 @@ const extremes =
         lowest: ranked.slice(-5).reverse(),
       }
     : null
+
+// Where prices moved, over one year. This is the query no competitor answers
+// and no AI summary can improve on without the underlying data: it takes
+// 3 630 medians to rank a department, not a paragraph of commentary.
+//
+// The pool is much smaller than the price ranking above — a commune has to hold
+// 50 sales in both 2024 and 2025, not just over the 24-month window — so it
+// covers 42 departments rather than all of them. Below ten communes the top and
+// bottom five overlap and the section says nothing.
+const byTrend = rankByEvolution(withType(rankingType), rankingType, 1)
+const trends =
+  byTrend.length >= 10
+    ? {
+        label: TYPE_LABELS[rankingType].plural,
+        from: byTrend[0].from,
+        to: byTrend[0].to,
+        eligible: byTrend.length,
+        rising: byTrend.slice(0, 5),
+        falling: byTrend.slice(-5).reverse(),
+      }
+    : null
+
+// The commune table is the substance of this page, and it is the one thing the
+// markup did not describe: without it the page declares a breadcrumb and
+// nothing else. Prices stay out of the ItemList — they belong to each commune's
+// own Dataset markup, and repeating them here would state the same figure twice
+// with no way to keep the two in step.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `Prix immobilier des communes du département ${department.name} (${department.code})`,
+  description,
+  numberOfItems: communes.length,
+  itemListOrder: 'https://schema.org/ItemListOrderAscending',
+  itemListElement: communes.map((commune, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: commune.name,
+    url: new URL(`/prix-immobilier-${commune.slug}`, Astro.site).href,
+  })),
+}
 ---
 
 <Base title={title} description={description}>
+  <script slot="head" type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+
   <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: department.name }]} />
 
   <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">
@@ -69,6 +117,90 @@ const extremes =
     l'ensemble des ventes, et non moyenner les médianes communales, ce qui donnerait un chiffre
     faux.
   </p>
+
+  {
+    extremes && (
+      <section class="mt-14">
+        <h2 class="text-xl font-semibold">Les écarts de prix dans le département</h2>
+        <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+          Prix médian au m² des {extremes.label}, le type de bien publié dans le plus de communes
+          du département. Comparer une médiane maison à une médiane appartement reviendrait à
+          classer deux marchés différents.
+        </p>
+
+        <div class="mt-6 grid gap-6 md:grid-cols-2">
+        {[
+          { heading: 'Les communes les plus chères', list: extremes.highest },
+          { heading: 'Les communes les plus abordables', list: extremes.lowest },
+        ].map((block) => (
+          <div class="rounded-xl border border-hairline bg-surface p-6">
+            <h3 class="text-base font-semibold">{block.heading}</h3>
+            <ol class="mt-4 space-y-1">
+              {block.list.map((commune) => (
+                <li class="flex items-baseline justify-between gap-3 border-b border-hairline py-2 text-sm last:border-0">
+                  <a
+                    class="font-medium underline decoration-brand-300 underline-offset-4 hover:text-brand-600"
+                    href={`/prix-immobilier-${commune.slug}`}
+                  >
+                    {commune.name}
+                  </a>
+                  <span class="shrink-0 text-ink-secondary tabular">
+                    {formatPricePerSqm(commune.recent[extremes.type].pricePerSqm)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    trends && (
+      <section class="mt-14">
+        <h2 class="text-xl font-semibold">
+          Où les prix ont bougé entre {trends.from} et {trends.to}
+        </h2>
+        <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+          Variation du prix médian au m² des {trends.label}, sur les {trends.eligible} communes du
+          département comptant au moins 50 ventes en {trends.from} comme en {trends.to}. En deçà, la
+          variation d'une année sur l'autre tient davantage au hasard de l'échantillon qu'au marché.
+        </p>
+
+        <div class="mt-6 grid gap-6 md:grid-cols-2">
+          {[
+            { heading: 'Les plus fortes hausses', list: trends.rising },
+            { heading: 'Les plus fortes baisses', list: trends.falling },
+          ].map((block) => (
+            <div class="rounded-xl border border-hairline bg-surface p-6">
+              <h3 class="text-base font-semibold">{block.heading}</h3>
+              <ol class="mt-4 space-y-1">
+                {block.list.map((entry) => (
+                  <li class="flex items-baseline justify-between gap-3 border-b border-hairline py-2 text-sm last:border-0">
+                    <a
+                      class="font-medium underline decoration-brand-300 underline-offset-4 hover:text-brand-600"
+                      href={`/prix-immobilier-${entry.commune.slug}`}
+                    >
+                      {entry.commune.name}
+                    </a>
+                    <span
+                      class="flex shrink-0 items-baseline gap-1 font-medium tabular"
+                      style={`color:${entry.ratio >= 0 ? 'var(--color-up)' : 'var(--color-down)'}`}
+                    >
+                      <span aria-hidden="true">{entry.ratio >= 0 ? '↑' : '↓'}</span>
+                      {formatPercent(entry.ratio)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   <h2 class="mt-14 text-xl font-semibold">Toutes les communes du département</h2>
 
@@ -111,41 +243,8 @@ const extremes =
     </table>
   </div>
 
-  <p class="mt-2 text-xs text-ink-muted">
+  <p class="mt-2 mb-14 text-xs text-ink-muted">
     « — » signale un type de bien comptant moins de 50 ventes sur 24 mois, trop peu pour publier
     une médiane.
   </p>
-
-  {
-    extremes && (
-      <section class="my-14 grid gap-6 md:grid-cols-2">
-        {[
-          { heading: 'Les communes les plus chères', list: extremes.highest },
-          { heading: 'Les communes les plus abordables', list: extremes.lowest },
-        ].map((block) => (
-          <div class="rounded-xl border border-hairline bg-surface p-6">
-            <h2 class="text-base font-semibold">{block.heading}</h2>
-            <p class="mt-1 text-xs text-ink-muted">
-              Prix médian au m², {extremes.label}
-            </p>
-            <ol class="mt-4 space-y-1">
-              {block.list.map((commune) => (
-                <li class="flex items-baseline justify-between gap-3 border-b border-hairline py-2 text-sm last:border-0">
-                  <a
-                    class="font-medium underline decoration-brand-300 underline-offset-4 hover:text-brand-600"
-                    href={`/prix-immobilier-${commune.slug}`}
-                  >
-                    {commune.name}
-                  </a>
-                  <span class="shrink-0 text-ink-secondary tabular">
-                    {formatPricePerSqm(commune.recent[extremes.type].pricePerSqm)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        ))}
-      </section>
-    )
-  }
 </Base>
