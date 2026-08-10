@@ -9,8 +9,8 @@ import RoomsTable from '../components/RoomsTable.astro'
 import {
   allCommunes,
   arrondissements,
+  comparables,
   evolution,
-  neighbours,
   parentCity,
   publishedTypes,
 } from '../lib/communes.js'
@@ -41,7 +41,7 @@ const where = locative(commune.name)
 
 const children = arrondissements(commune)
 const city = parentCity(commune)
-const nearby = commune.kind === 'arrondissement' ? [] : neighbours(commune)
+const nearby = commune.kind === 'arrondissement' ? null : comparables(commune)
 
 // The site name is left out: Google appends it from og:site_name, and the
 // characters are better spent on the figure. The price is only kept when the
@@ -170,12 +170,31 @@ const jsonLd = {
   }
 
   {
-    nearby.length > 0 && (
+    nearby && nearby.list.length > 0 && (
       <section class="my-14">
         {/* Department names carry no gender or article in the dataset, so the
             heading avoids the preposition rather than guessing it. */}
-        <h2 class="text-xl font-semibold">Autres communes du même département</h2>
+        <h2 class="text-xl font-semibold">Communes au prix comparable</h2>
         <p class="mt-1 text-sm text-ink-secondary">
+          Les communes du département qui encadrent {commune.name} sur le prix médian au m², pour
+          les {TYPE_LABELS[nearby.type].plural}.
+        </p>
+        <ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {nearby.list.map((other) => (
+            <li>
+              <a
+                href={`/prix-immobilier-${other.slug}`}
+                class="flex items-baseline justify-between gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+              >
+                <span class="font-medium">{other.name}</span>
+                <span class="text-ink-secondary tabular">
+                  {formatPricePerSqm(other.recent[nearby.type].pricePerSqm)}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p class="mt-4 text-sm">
           <a
             class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
             href={`/prix-immobilier-departement-${commune.department.slug}`}
@@ -183,24 +202,6 @@ const jsonLd = {
             Voir tout le département {commune.department.name} ({commune.department.code})
           </a>
         </p>
-        <ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {nearby.map((other) => {
-            const type = publishedTypes(other)[0]
-            return (
-              <li>
-                <a
-                  href={`/prix-immobilier-${other.slug}`}
-                  class="flex items-baseline justify-between gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
-                >
-                  <span class="font-medium">{other.name}</span>
-                  <span class="text-ink-secondary tabular">
-                    {formatPricePerSqm(other.recent[type].pricePerSqm)}
-                  </span>
-                </a>
-              </li>
-            )
-          })}
-        </ul>
       </section>
     )
   }
