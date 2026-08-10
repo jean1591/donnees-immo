@@ -51,6 +51,21 @@ const ogImage = new URL(`/og.png?v=${DATASET.releaseDate}`, Astro.site).href
     <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="sitemap" href="/sitemap.xml" />
+
+    {/* Umami, self-hosted and cookieless — no consent banner needed, and
+        nothing to declare beyond the line in /mentions-legales. `is:inline`
+        keeps Astro from touching the tag; only the production build gets it,
+        so `astro dev` does not pollute the stats. */}
+    {
+      import.meta.env.PROD && (
+        <script
+          is:inline
+          defer
+          src="https://analytics.rb2.fr/script.js"
+          data-website-id="5a436819-bd68-44c4-9c05-46bfac0e2abe"
+        />
+      )
+    }
     <slot name="head" />
   </head>
   <body class="min-h-screen bg-plane text-ink antialiased">
