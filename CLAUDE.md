@@ -48,11 +48,15 @@ donnees-immo/
 │   ├── components/
 │   ├── layouts/
 │   └── lib/{slug.js,format.js}
-└── public/robots.txt
+├── scripts/og-card.mjs     # renders public/og.png via headless Chrome
+└── public/{robots.txt,og.png}
 ```
 
 `data/communes.json` is **committed**: the build must run without the DuckDB
 database. The ETL only runs twice a year, locally.
+
+`public/og.png` is committed for the same reason, and states the commune count,
+so it is regenerated in the same pass: `npm run export && npm run og`.
 
 ## Data source
 

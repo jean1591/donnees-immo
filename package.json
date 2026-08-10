@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "export": "node etl/export.mjs"
+    "export": "node etl/export.mjs",
+    "og": "node scripts/og-card.mjs"
   },
   "devDependencies": {
     "@duckdb/node-api": "^1.5.5-r.3"
