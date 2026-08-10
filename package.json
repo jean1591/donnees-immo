@@ -7,7 +7,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "export": "node etl/export.mjs",
-    "og": "node scripts/og-card.mjs"
+    "og": "node scripts/og-card.mjs",
+    "favicon": "node scripts/favicon.mjs"
   },
   "devDependencies": {
     "@duckdb/node-api": "^1.5.5-r.3"

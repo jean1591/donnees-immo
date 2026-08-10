@@ -21,8 +21,15 @@ const ogImage = new URL(`/og.png?v=${DATASET.releaseDate}`, Astro.site).href
     <meta name="description" content={description} />
     <link rel="canonical" href={href} />
 
-    {/* No apple-touch-icon reference: that one has to be a PNG, and pointing
-        at a missing file is worse than declaring nothing. */}
+    {/* The .ico is listed first and the SVG second: browsers take the last
+        format they understand, so modern ones get the SVG and the rest fall
+        back. It mostly exists for the clients that never read this markup and
+        request /favicon.ico at the root regardless — that was a steady source
+        of 404s in the crawler logs. Both come from scripts/favicon.mjs.
+
+        Still no apple-touch-icon: that one has to be a PNG, and pointing at a
+        missing file is worse than declaring nothing. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#faf5ec" />
 
