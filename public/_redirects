@@ -1,0 +1,21 @@
+# Homonym arbitration, April 2026 release: these fifteen communes held the
+# bare slug of a name they share with another commune, and were published under
+# a department suffix first. The suffixed address was live and in a submitted
+# sitemap, so it redirects rather than 404s.
+#
+# homonymes.json is frozen precisely so this list never has to grow again.
+/prix-immobilier-bassens-33        /prix-immobilier-bassens  301
+/prix-immobilier-breteuil-27       /prix-immobilier-breteuil  301
+/prix-immobilier-breuillet-91      /prix-immobilier-breuillet  301
+/prix-immobilier-canet-34          /prix-immobilier-canet  301
+/prix-immobilier-change-53         /prix-immobilier-change  301
+/prix-immobilier-la-trinite-06     /prix-immobilier-la-trinite  301
+/prix-immobilier-les-angles-30     /prix-immobilier-les-angles  301
+/prix-immobilier-nozay-44          /prix-immobilier-nozay  301
+/prix-immobilier-perigny-17        /prix-immobilier-perigny  301
+/prix-immobilier-plouhinec-29      /prix-immobilier-plouhinec  301
+/prix-immobilier-saint-michel-02   /prix-immobilier-saint-michel  301
+/prix-immobilier-saint-ouen-41     /prix-immobilier-saint-ouen  301
+/prix-immobilier-saint-vallier-71  /prix-immobilier-saint-vallier  301
+/prix-immobilier-vernouillet-28    /prix-immobilier-vernouillet  301
+/prix-immobilier-vouille-86        /prix-immobilier-vouille  301

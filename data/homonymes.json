@@ -1,6 +1,6 @@
 {
   "saint-michel": {
-    "winner": null,
+    "winner": "02684",
     "candidates": [
       {
         "code": "02684",
@@ -15,7 +15,7 @@
     ]
   },
   "la-trinite": {
-    "winner": null,
+    "winner": "06149",
     "candidates": [
       {
         "code": "06149",
@@ -30,7 +30,7 @@
     ]
   },
   "canet": {
-    "winner": null,
+    "winner": "34051",
     "candidates": [
       {
         "code": "11067",
@@ -45,7 +45,7 @@
     ]
   },
   "breuillet": {
-    "winner": null,
+    "winner": "91105",
     "candidates": [
       {
         "code": "17064",
@@ -60,7 +60,7 @@
     ]
   },
   "perigny": {
-    "winner": null,
+    "winner": "17274",
     "candidates": [
       {
         "code": "17274",
@@ -75,7 +75,7 @@
     ]
   },
   "saint-vallier": {
-    "winner": null,
+    "winner": "71486",
     "candidates": [
       {
         "code": "26333",
@@ -105,7 +105,7 @@
     ]
   },
   "breteuil": {
-    "winner": null,
+    "winner": "27112",
     "candidates": [
       {
         "code": "27112",
@@ -135,7 +135,7 @@
     ]
   },
   "vernouillet": {
-    "winner": null,
+    "winner": "28404",
     "candidates": [
       {
         "code": "28404",
@@ -150,7 +150,7 @@
     ]
   },
   "plouhinec": {
-    "winner": null,
+    "winner": "29197",
     "candidates": [
       {
         "code": "29197",
@@ -165,7 +165,7 @@
     ]
   },
   "les-angles": {
-    "winner": null,
+    "winner": "30011",
     "candidates": [
       {
         "code": "30011",
@@ -210,7 +210,7 @@
     ]
   },
   "bassens": {
-    "winner": null,
+    "winner": "33032",
     "candidates": [
       {
         "code": "33032",
@@ -240,7 +240,7 @@
     ]
   },
   "saint-ouen": {
-    "winner": null,
+    "winner": "41226",
     "candidates": [
       {
         "code": "41226",
@@ -255,7 +255,7 @@
     ]
   },
   "nozay": {
-    "winner": null,
+    "winner": "44113",
     "candidates": [
       {
         "code": "44113",
@@ -300,7 +300,7 @@
     ]
   },
   "change": {
-    "winner": null,
+    "winner": "53054",
     "candidates": [
       {
         "code": "53054",
@@ -345,7 +345,7 @@
     ]
   },
   "vouille": {
-    "winner": null,
+    "winner": "86294",
     "candidates": [
       {
         "code": "79355",
