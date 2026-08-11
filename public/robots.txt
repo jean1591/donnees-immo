@@ -2,3 +2,6 @@ User-agent: *
 Allow: /
 
 Sitemap: https://donnees-immo.fr/sitemap.xml
+
+# Périmètre, méthode et limites du jeu de données, à lire avant de citer un
+# chiffre : https://donnees-immo.fr/llms.txt
