@@ -1,0 +1,195 @@
+---
+// National price ranking, dearest end. Its mirror lives in
+// villes-les-moins-cheres-de-france.astro and the two are deliberately separate
+// pages: they answer two different questions, and a reader looking for the
+// cheapest communes of France has no reason to scroll past fifty ski resorts.
+import Base from '../layouts/Base.astro'
+import Breadcrumb from '../components/Breadcrumb.astro'
+import RankingTable from '../components/RankingTable.astro'
+import { arrondissements, byCode } from '../lib/communes.js'
+import { dearest, priceRank, rankedCount, RANKING_SIZE } from '../lib/rankings.js'
+import { formatCount, formatEuro, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
+
+const rankings = ['apartment', 'house'].map((type) => ({
+  type,
+  label: TYPE_LABELS[type],
+  rows: dearest(type),
+  published: rankedCount(type),
+}))
+
+const [apartments, houses] = rankings
+const topApartment = apartments.rows[0]
+const topHouse = houses.rows[0]
+
+// Paris is the answer most readers arrive with, and the table says otherwise —
+// which is worth a paragraph rather than leaving them to count rows. Everything
+// in it is read from the ranking, position included: pinning « 7e » into the
+// text would survive exactly one release.
+const PARIS = '75056'
+const paris = byCode.get(PARIS)
+const parisRank = priceRank(PARIS, 'apartment')
+
+// The dearest Paris arrondissement, kept only while it actually beats the
+// dearest commune — the point of naming it is the contrast, and a release that
+// reversed the two would turn the sentence into a false statement.
+const topParisDistrict = arrondissements(paris)
+  .filter((district) => district.recent.apartment.count)
+  .sort((a, b) => b.recent.apartment.pricePerSqm - a.recent.apartment.pricePerSqm)[0]
+
+const title = 'Les villes les plus chères de France — prix au m²'
+const description = `Les ${RANKING_SIZE} communes les plus chères de France au m², appartements et maisons classés séparément, d'après les ventes enregistrées par l'administration fiscale.`
+
+// Positions and names only. The prices belong to each commune's own Dataset
+// markup, and repeating them here would state the same figure in two places
+// with no way to keep the two in step.
+const jsonLd = rankings.map((ranking) => ({
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `Les ${RANKING_SIZE} communes les plus chères de France — ${ranking.label.plural}`,
+  description,
+  numberOfItems: ranking.rows.length,
+  itemListOrder: 'https://schema.org/ItemListOrderDescending',
+  itemListElement: ranking.rows.map((commune, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: commune.name,
+    url: new URL(`/prix-immobilier-${commune.slug}`, Astro.site).href,
+  })),
+}))
+---
+
+<Base title={title} description={description}>
+  <script slot="head" type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+
+  <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: 'Les villes les plus chères' }]} />
+
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">Les villes les plus chères de France</h1>
+
+  <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-secondary">
+    Sur les 24 derniers mois, la commune où l'appartement se vend le plus cher est
+    <strong class="font-semibold text-ink">{topApartment.name}</strong>, à
+    <strong class="font-semibold text-ink"
+      >{formatPricePerSqm(topApartment.recent.apartment.pricePerSqm)}</strong
+    >. Pour les maisons, c'est
+    <strong class="font-semibold text-ink">{topHouse.name}</strong>, à
+    <strong class="font-semibold text-ink">
+      {formatPricePerSqm(topHouse.recent.house.pricePerSqm)}
+    </strong> — soit {formatEuro(topHouse.recent.house.medianPrice)} pour une maison médiane.
+  </p>
+
+  <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+    Ces prix sont des médianes calculées sur des ventes réellement enregistrées, pas des
+    estimations. Les deux types de biens sont classés séparément : comparer une médiane maison à
+    une médiane appartement reviendrait à classer deux marchés différents.
+  </p>
+
+  {
+    rankings.map((ranking) => (
+      <section class="mt-14 border-t border-hairline pt-10">
+        <h2 class="text-xl font-semibold">
+          Les {RANKING_SIZE} communes les plus chères — {ranking.label.plural}
+        </h2>
+        <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+          Classement des {formatCount(ranking.published)} communes ayant vendu au moins 50{' '}
+          {ranking.label.plural} sur 24 mois — en dessous, le prix médian n'est pas publié.
+        </p>
+        <RankingTable
+          rows={ranking.rows}
+          type={ranking.type}
+          caption={`Les ${RANKING_SIZE} communes de France au prix médian au mètre carré le plus élevé, ${ranking.label.plural}`}
+        />
+      </section>
+    ))
+  }
+
+  {
+    parisRank > 1 && (
+      <section class="mt-14 border-t border-hairline pt-10">
+        <h2 class="text-xl font-semibold">Pourquoi Paris n'est-il pas en tête ?</h2>
+        <div class="mt-3 max-w-2xl space-y-3 leading-relaxed text-ink-secondary">
+          <p>
+            Paris n'arrive qu'en {parisRank}<sup>e</sup> position, à{' '}
+            {formatPricePerSqm(paris.recent.apartment.pricePerSqm)}, derrière des communes bien
+            plus petites. L'écart tient à la nature des deux marchés
+            autant qu'à leur niveau de prix : la médiane parisienne porte sur{' '}
+            {formatCount(paris.recent.apartment.count)} ventes, celle de {topApartment.name} sur{' '}
+            {formatCount(topApartment.recent.apartment.count)}.
+          </p>
+          <p>
+            Une commune de villégiature vend peu de logements, presque tous rares. Une capitale en
+            vend beaucoup, dont l'essentiel est ordinaire — et une médiane décrit le logement du
+            milieu, pas le plus cher.
+            {topParisDistrict.recent.apartment.pricePerSqm >
+              topApartment.recent.apartment.pricePerSqm && (
+              <>
+                {' '}Pris séparément,{' '}
+                <a
+                  class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+                  href={`/prix-immobilier-${topParisDistrict.slug}`}
+                >
+                  {topParisDistrict.name.replace('Paris ', 'le ').replace(' Arrondissement', ' arrondissement')}
+                </a>{' '}
+                dépasse {topApartment.name} à{' '}
+                {formatPricePerSqm(topParisDistrict.recent.apartment.pricePerSqm)} — mais il ne pèse
+                qu'une fraction des ventes de la ville.
+              </>
+            )}
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="mt-14 rounded-xl border border-hairline bg-surface p-6 sm:p-8">
+    <h2 class="text-xl font-semibold">Comment ce classement est construit</h2>
+    {/* Only what this ranking does that /methodologie does not cover. The
+        24-month window and the 50-sale threshold are stated above each table
+        and explained in full there; repeating them here said the same thing a
+        third time. */}
+    <ul class="mt-4 space-y-3 text-sm leading-relaxed text-ink-secondary">
+      <li>
+        <strong class="font-medium text-ink">L'ordre exact n'est pas à prendre au pied de la lettre.</strong>
+        À 50 ventes, la marge d'erreur sur une médiane avoisine 9 % : deux communes voisines dans le
+        tableau pourraient être dans l'autre sens. Leur niveau de prix, lui, tient.
+      </li>
+      <li>
+        <strong class="font-medium text-ink">Paris, Lyon et Marseille comptent pour une commune.</strong>
+        Leurs arrondissements ne sont pas classés séparément : les trois villes prendraient une
+        bonne part du tableau des appartements, pour un classement qui ne dirait plus rien du reste
+        du pays.
+      </li>
+      <li>
+        <strong class="font-medium text-ink">Aucune commune d'Alsace ni de Moselle.</strong> Le
+        Bas-Rhin, le Haut-Rhin, la Moselle et Mayotte relèvent du livre foncier et ne figurent pas
+        dans les données ouvertes, donc dans aucun classement.
+      </li>
+    </ul>
+    <p class="mt-4 text-sm">
+      <a
+        class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700"
+        href="/methodologie"
+      >
+        Méthodologie détaillée
+      </a>
+    </p>
+  </section>
+
+  <nav class="mt-14 mb-14 grid gap-3 sm:grid-cols-2">
+    <a
+      href="/villes-les-moins-cheres-de-france"
+      class="rounded-xl border border-hairline bg-surface px-5 py-4 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+    >
+      <span class="font-medium">Les villes les moins chères de France</span>
+      <span class="mt-1 block text-ink-secondary">L'autre bout du classement.</span>
+    </a>
+    <a
+      href="/ou-les-prix-immobiliers-ont-le-plus-baisse"
+      class="rounded-xl border border-hairline bg-surface px-5 py-4 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+    >
+      <span class="font-medium">Où les prix ont le plus baissé</span>
+      <span class="mt-1 block text-ink-secondary">
+        Les hausses et les baisses, commune par commune.
+      </span>
+    </a>
+  </nav>
+</Base>

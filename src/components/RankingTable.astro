@@ -1,0 +1,62 @@
+---
+// A national price ranking, one row per commune. Shared by the dearest and the
+// cheapest pages, which differ only in which end of the sort they hand over.
+//
+// The sale count travels with every median, here as everywhere else: at the
+// publication threshold of 50 the margin on the figure is around 9 %, which the
+// reader has no way to weigh unless the count is on the row.
+import { formatCount, formatEuro, formatPricePerSqm } from '../lib/format.js'
+
+const { rows, type, caption } = Astro.props
+---
+
+<div class="mt-6 overflow-x-auto rounded-lg border border-hairline bg-surface">
+  <table class="w-full text-sm">
+    <caption class="sr-only">{caption}</caption>
+    <thead class="bg-surface-sunk text-xs text-ink-secondary">
+      <tr>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">#</th>
+        <th scope="col" class="px-4 py-2.5 text-left font-medium">Commune</th>
+        <th scope="col" class="px-4 py-2.5 text-left font-medium">Département</th>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">Prix au m²</th>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">Prix de vente</th>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">Ventes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((commune, index) => (
+          <tr class="border-t border-hairline">
+            <td class="px-4 py-2.5 text-right text-xs text-ink-muted tabular">{index + 1}</td>
+            <th scope="row" class="px-4 py-2.5 text-left font-medium whitespace-nowrap">
+              <a
+                class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+                href={`/prix-immobilier-${commune.slug}`}
+              >
+                {commune.name}
+              </a>
+            </th>
+            <td class="px-4 py-2.5 text-left text-ink-secondary whitespace-nowrap">
+              <a
+                class="underline decoration-hairline underline-offset-2 hover:text-brand-600 hover:decoration-brand-300"
+                href={`/prix-immobilier-departement-${commune.department.slug}`}
+              >
+                {commune.department.name}
+              </a>
+              <span class="ml-1 text-xs text-ink-muted tabular">{commune.department.code}</span>
+            </td>
+            <td class="px-4 py-2.5 text-right font-medium whitespace-nowrap">
+              {formatPricePerSqm(commune.recent[type].pricePerSqm)}
+            </td>
+            <td class="px-4 py-2.5 text-right text-ink-secondary whitespace-nowrap">
+              {formatEuro(commune.recent[type].medianPrice)}
+            </td>
+            <td class="px-4 py-2.5 text-right text-ink-secondary">
+              {formatCount(commune.recent[type].count)}
+            </td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>

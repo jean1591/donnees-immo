@@ -1,0 +1,248 @@
+---
+// National price ranking, cheapest end. Mirror of
+// villes-les-plus-cheres-de-france.astro, with one section it does not need:
+// the communes held out of the ranking all sit at this end, so this is the page
+// that has to account for them.
+import Base from '../layouts/Base.astro'
+import Breadcrumb from '../components/Breadcrumb.astro'
+import RankingTable from '../components/RankingTable.astro'
+import { cheapest, dearest, rankedCount, unrankable, RANKING_SIZE } from '../lib/rankings.js'
+import { formatCount, formatEuro, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
+
+const rankings = ['apartment', 'house'].map((type) => ({
+  type,
+  label: TYPE_LABELS[type],
+  rows: cheapest(type),
+  published: rankedCount(type),
+}))
+
+const [apartments, houses] = rankings
+const cheapestApartment = apartments.rows[0]
+const cheapestHouse = houses.rows[0]
+
+// One list across both types: only house medians carry the defect today, and a
+// section that splits by type to say so twice would read as two problems.
+const held = ['apartment', 'house'].flatMap((type) =>
+  unrankable(type).map((commune) => ({ commune, type }))
+)
+
+// Where the cheap communes are, read off the two tables rather than asserted:
+// the departments that supply the most rows, and what a sale actually costs
+// there against the other end of the country.
+const rows = rankings.flatMap((ranking) => ranking.rows)
+
+const byDepartment = [
+  ...rows
+    .reduce((map, commune) => {
+      const entry = map.get(commune.department.code) ?? { ...commune.department, count: 0 }
+      entry.count += 1
+      return map.set(commune.department.code, entry)
+    }, new Map())
+    .values(),
+].sort((a, b) => b.count - a.count)
+
+const leading = byDepartment.slice(0, 3)
+const leadingShare = leading.reduce((sum, entry) => sum + entry.count, 0)
+
+const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]
+const cheapHousePrice = median(cheapest('house').map((commune) => commune.recent.house.medianPrice))
+const dearHousePrice = median(dearest('house').map((commune) => commune.recent.house.medianPrice))
+
+const title = 'Les villes les moins chères de France — prix au m²'
+const description = `Les ${RANKING_SIZE} communes les moins chères de France au m², appartements et maisons classés séparément, d'après les ventes enregistrées par l'administration fiscale.`
+
+const jsonLd = rankings.map((ranking) => ({
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `Les ${RANKING_SIZE} communes les moins chères de France — ${ranking.label.plural}`,
+  description,
+  numberOfItems: ranking.rows.length,
+  itemListOrder: 'https://schema.org/ItemListOrderAscending',
+  itemListElement: ranking.rows.map((commune, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: commune.name,
+    url: new URL(`/prix-immobilier-${commune.slug}`, Astro.site).href,
+  })),
+}))
+---
+
+<Base title={title} description={description}>
+  <script slot="head" type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+
+  <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: 'Les villes les moins chères' }]} />
+
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">Les villes les moins chères de France</h1>
+
+  <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-secondary">
+    Sur les 24 derniers mois, la commune où l'appartement se vend le moins cher est
+    <strong class="font-semibold text-ink">{cheapestApartment.name}</strong>, à
+    <strong class="font-semibold text-ink">
+      {formatPricePerSqm(cheapestApartment.recent.apartment.pricePerSqm)}
+    </strong> — {formatEuro(cheapestApartment.recent.apartment.medianPrice)} pour l'appartement médian.
+    Pour les maisons, c'est <strong class="font-semibold text-ink">{cheapestHouse.name}</strong>, à
+    <strong class="font-semibold text-ink"
+      >{formatPricePerSqm(cheapestHouse.recent.house.pricePerSqm)}</strong
+    >.
+  </p>
+
+  <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+    Un prix bas a presque toujours une raison, et les DVF n'en disent rien : ni l'état du bien, ni
+    sa situation dans la commune, ni ce qu'il faudra y engager. Ces chiffres décrivent ce qui s'est
+    vendu, pas ce qui se vendrait.
+  </p>
+
+  {
+    rankings.map((ranking) => (
+      <section class="mt-14 border-t border-hairline pt-10">
+        <h2 class="text-xl font-semibold">
+          Les {RANKING_SIZE} communes les moins chères — {ranking.label.plural}
+        </h2>
+        <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+          Classement des {formatCount(ranking.published)} communes ayant vendu au moins 50{' '}
+          {ranking.label.plural} sur 24 mois — en dessous, le prix médian n'est pas publié.
+        </p>
+        <RankingTable
+          rows={ranking.rows}
+          type={ranking.type}
+          caption={`Les ${RANKING_SIZE} communes de France au prix médian au mètre carré le plus bas, ${ranking.label.plural}`}
+        />
+      </section>
+    ))
+  }
+
+  {
+    held.length > 0 && (
+      <section class="mt-14 border-t border-hairline pt-10">
+        <h2 class="text-xl font-semibold">
+          {held.length} communes écartées de ce classement
+        </h2>
+        <div class="mt-3 max-w-2xl space-y-3 leading-relaxed text-ink-secondary">
+          <p>
+            {held[0].commune.name} publie une médiane {TYPE_LABELS[held[0].type].singular} de{' '}
+            {formatPricePerSqm(held[0].commune.recent[held[0].type].pricePerSqm)}, soit{' '}
+            {formatEuro(held[0].commune.recent[held[0].type].medianPrice)} pour{' '}
+            {held[0].commune.recent[held[0].type].medianArea} m². Ce n'est pas un marché bon marché :
+            c'est une commune où une part importante des mutations enregistrées ne sont pas des
+            ventes au prix du marché — indivisions, successions, cessions entre proches. Les DVF ne
+            permettent pas de les identifier une par une.
+          </p>
+          <p>
+            Une médiane absorbe sans bouger quelques ventes de ce type : c'est précisément pour
+            cela que ce site ne publie que des médianes. Mais lorsqu'un quart des ventes sont dans
+            ce cas, le point médian tombe lui-même au milieu d'elles — à {held[0].commune.name}, le
+            premier quart des ventes se situe sous{' '}
+            {formatPricePerSqm(held[0].commune.recent[held[0].type].q1)}. Le chiffre ne décrit plus
+            un marché.
+          </p>
+          <p>
+            Les communes dont le premier quartile tombe sous 500 €/m² avec un écart interquartile
+            supérieur à quatre sortent donc des classements. Elles sont {held.length}, toutes aux
+            Antilles. Leur chiffre reste publié sur leur propre page, à côté des déciles qui le
+            rendent lisible.
+          </p>
+        </div>
+        <ul class="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {held.map((entry) => (
+            <li>
+              <a
+                href={`/prix-immobilier-${entry.commune.slug}`}
+                class="flex items-baseline justify-between gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+              >
+                <span class="font-medium">{entry.commune.name}</span>
+                <span class="shrink-0 text-xs text-ink-muted tabular">
+                  {entry.commune.department.code}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <section class="mt-14 border-t border-hairline pt-10">
+    <h2 class="text-xl font-semibold">Où sont les communes les moins chères de France ?</h2>
+    <div class="mt-3 max-w-2xl space-y-3 leading-relaxed text-ink-secondary">
+      <p>
+        Elles ne se répartissent pas au hasard.
+        {/* The separator trails each link rather than leading it: a line break
+            between two JSX text nodes renders as a space, which would land in
+            front of the comma. */}
+        {
+          leading.map((entry, index) => (
+            <>
+              <a
+                class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+                href={`/prix-immobilier-departement-${entry.slug}`}
+              >{entry.name}</a>{index < leading.length - 2 ? ', ' : index === leading.length - 2 ? ' et ' : ''}
+            </>
+          ))
+        }
+        {`fournissent à eux seuls ${leadingShare} des ${rows.length} lignes des deux tableaux ci-dessus.`}
+      </p>
+      <p>
+        L'écart avec l'autre bout du pays ne se lit pas seulement au mètre carré. Dans ces{' '}
+        {RANKING_SIZE} communes, une maison change de mains autour de{' '}
+        <strong class="font-medium text-ink">{formatEuro(cheapHousePrice)}</strong> ; dans les{' '}
+        {RANKING_SIZE} communes les plus chères, il faut compter{' '}
+        <strong class="font-medium text-ink">{formatEuro(dearHousePrice)}</strong> pour la maison
+        médiane. Ce que les DVF ne disent pas, c'est pourquoi : ni l'état des biens, ni ce qui reste
+        d'activité autour, ne figurent dans le fichier.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-14 rounded-xl border border-hairline bg-surface p-6 sm:p-8">
+    <h2 class="text-xl font-semibold">Comment ce classement est construit</h2>
+    {/* Only what this ranking does that /methodologie does not cover. The
+        24-month window and the 50-sale threshold are stated above each table
+        and explained in full there; repeating them here said the same thing a
+        third time. */}
+    <ul class="mt-4 space-y-3 text-sm leading-relaxed text-ink-secondary">
+      <li>
+        <strong class="font-medium text-ink">Les petites communes n'y figurent pas.</strong> Sous
+        50 ventes, aucun prix n'est publié : leur absence ne dit pas qu'elles sont chères, seulement
+        qu'un prix calculé sur vingt ventes ne se défend pas.
+      </li>
+      <li>
+        <strong class="font-medium text-ink">Paris, Lyon et Marseille comptent pour une commune.</strong>
+        Leurs arrondissements ne sont pas classés séparément : les trois villes prendraient une
+        bonne part du tableau des appartements, pour un classement qui ne dirait plus rien du reste
+        du pays.
+      </li>
+      <li>
+        <strong class="font-medium text-ink">Aucune commune d'Alsace ni de Moselle.</strong> Le
+        Bas-Rhin, le Haut-Rhin, la Moselle et Mayotte relèvent du livre foncier et ne figurent pas
+        dans les données ouvertes, donc dans aucun classement.
+      </li>
+    </ul>
+    <p class="mt-4 text-sm">
+      <a
+        class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700"
+        href="/methodologie"
+      >
+        Méthodologie détaillée
+      </a>
+    </p>
+  </section>
+
+  <nav class="mt-14 mb-14 grid gap-3 sm:grid-cols-2">
+    <a
+      href="/villes-les-plus-cheres-de-france"
+      class="rounded-xl border border-hairline bg-surface px-5 py-4 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+    >
+      <span class="font-medium">Les villes les plus chères de France</span>
+      <span class="mt-1 block text-ink-secondary">L'autre bout du classement.</span>
+    </a>
+    <a
+      href="/ou-les-prix-immobiliers-ont-le-plus-baisse"
+      class="rounded-xl border border-hairline bg-surface px-5 py-4 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+    >
+      <span class="font-medium">Où les prix ont le plus baissé</span>
+      <span class="mt-1 block text-ink-secondary">
+        Les hausses et les baisses, commune par commune.
+      </span>
+    </a>
+  </nav>
+</Base>

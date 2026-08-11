@@ -11,6 +11,7 @@ import {
   arrondissements,
   comparables,
   evolution,
+  lastDatasetYear,
   parentCity,
   publishedTypes,
 } from '../lib/communes.js'
@@ -22,6 +23,7 @@ import {
   formatPricePerSqm,
   formatPricePerSqmProse,
   locative,
+  partitive,
   TYPE_LABELS,
 } from '../lib/format.js'
 
@@ -42,6 +44,31 @@ const where = locative(commune.name)
 const children = arrondissements(commune)
 const city = parentCity(commune)
 const nearby = commune.kind === 'arrondissement' ? null : comparables(commune)
+
+/**
+ * Relative gap beyond which the neighbours stop being comparable and the page
+ * has to say so. Measured across the dataset, half the communes sit within 11 %
+ * of their furthest neighbour and three quarters within 26 % — Bordeaux's own
+ * window runs from −7 % to +28 % and is a fair comparison. The caveat is
+ * therefore worth showing above 40 %, where it fires on the twelfth of communes
+ * whose department has nothing close to offer, rather than on a quarter of the
+ * site.
+ */
+const WIDE_SPREAD = 0.4
+
+// How far the furthest neighbour sits from this commune, in relative terms.
+// Where few communes of a department clear the publication threshold the window
+// has nothing close to offer — the Creuse publishes four house markets, running
+// from 625 to 1 219 €/m² — and calling that « comparable » would be a claim the
+// prices printed beside it contradict.
+const nearbySpread =
+  nearby && nearby.list.length
+    ? Math.max(
+        ...nearby.list.map((other) =>
+          Math.abs(other.recent[nearby.type].pricePerSqm / commune.recent[nearby.type].pricePerSqm - 1)
+        )
+      )
+    : 0
 
 // The site name is left out: Google appends it from og:site_name, and the
 // characters are better spent on the figure. The price is only kept when the
@@ -126,8 +153,9 @@ const jsonLd = {
   {
     types.length === 1 && (
       <p class="mt-4 text-sm text-ink-muted">
-        Les ventes de {TYPE_LABELS[types[0] === 'apartment' ? 'house' : 'apartment'].plural} sont
-        trop peu nombreuses {where} pour publier une médiane fiable.
+        Les ventes{' '}
+        {partitive(TYPE_LABELS[types[0] === 'apartment' ? 'house' : 'apartment'].plural)} sont trop
+        peu nombreuses {where} pour publier une médiane fiable.
       </p>
     )
   }
@@ -174,10 +202,12 @@ const jsonLd = {
       <section class="my-14">
         {/* Department names carry no gender or article in the dataset, so the
             heading avoids the preposition rather than guessing it. */}
-        <h2 class="text-xl font-semibold">Communes au prix comparable</h2>
+        <h2 class="text-xl font-semibold">Les communes les plus proches en prix</h2>
         <p class="mt-1 text-sm text-ink-secondary">
-          Les communes du département qui encadrent {commune.name} sur le prix médian au m², pour
-          les {TYPE_LABELS[nearby.type].plural}.
+          Celles du département qui encadrent {commune.name} sur le prix médian au m², pour les{' '}
+          {TYPE_LABELS[nearby.type].plural}.
+          {nearbySpread > WIDE_SPREAD &&
+            ` Aucune n'affiche un prix vraiment voisin : les plus proches restent éloignées.`}
         </p>
         <ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {nearby.list.map((other) => (
@@ -194,42 +224,50 @@ const jsonLd = {
             </li>
           ))}
         </ul>
-        <p class="mt-4 text-sm">
-          <a
-            class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
-            href={`/prix-immobilier-departement-${commune.department.slug}`}
-          >
-            Voir tout le département {commune.department.name} ({commune.department.code})
-          </a>
-        </p>
       </section>
     )
   }
 
-  <section class="my-14 rounded-xl border border-hairline bg-surface p-6 sm:p-8">
-    <h2 class="text-xl font-semibold">Comment ces chiffres sont calculés</h2>
-    <ul class="mt-3 space-y-2 text-sm text-ink-secondary">
-      <li>
-        <strong class="font-medium text-ink">Des ventes, pas des estimations.</strong> Chaque chiffre
-        vient des actes notariés transmis à l'administration fiscale.
-      </li>
-      <li>
-        <strong class="font-medium text-ink">Médiane, pas moyenne.</strong> La médiane résiste aux
-        ventes atypiques, qui représentent environ 7 % des transactions.
-      </li>
-      <li>
-        <strong class="font-medium text-ink">Ventes d'un seul logement.</strong> Les lots multiples,
-        dépendances et parkings vendus seuls sont écartés.
-      </li>
-      <li>
-        <strong class="font-medium text-ink">Seuil de publication à 50 ventes.</strong> En deçà, la
-        marge d'erreur sur la médiane dépasse 10 % et le chiffre n'est pas publié.
-      </li>
+  {/* The rankings are three clicks from nowhere without this: they were linked
+      from the homepage and the 97 department pages, while the 3 630 commune
+      pages — 97 % of the site — pointed at neither. */}
+  <section class="my-14">
+    <h2 class="text-xl font-semibold">Situer {commune.name} dans le reste du pays</h2>
+    <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+      {
+        [
+          {
+            href: `/prix-immobilier-departement-${commune.department.slug}`,
+            label: `Tout le département ${commune.department.name} (${commune.department.code})`,
+          },
+          {
+            href: '/villes-les-plus-cheres-de-france',
+            label: 'Les villes les plus chères de France',
+          },
+          {
+            href: '/villes-les-moins-cheres-de-france',
+            label: 'Les villes les moins chères de France',
+          },
+          {
+            href: '/ou-les-prix-immobiliers-ont-le-plus-baisse',
+            label: `Où les prix ont le plus baissé en ${lastDatasetYear}`,
+          },
+          {
+            href: '/ou-les-prix-immobiliers-ont-le-plus-augmente',
+            label: `Où les prix ont le plus augmenté en ${lastDatasetYear}`,
+          },
+        ].map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class="block rounded-lg border border-hairline bg-surface px-4 py-3 text-sm font-medium transition-colors hover:border-brand-300 hover:bg-brand-100"
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
     </ul>
-    <p class="mt-4 text-sm">
-      <a class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700" href="/methodologie">
-        Méthodologie détaillée
-      </a>
-    </p>
   </section>
+
 </Base>

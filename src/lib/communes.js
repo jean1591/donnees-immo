@@ -12,6 +12,40 @@ export const byCode = new Map(communes.map((commune) => [commune.code, commune])
 /** A type block is either published or empty — `count` is the tell. */
 export const hasData = (block) => Boolean(block && block.count)
 
+/**
+ * A quarter of the sales below this price per sqm, with a quartile spread wider
+ * than this ratio, is the signature of a median computed over something other
+ * than a housing market.
+ *
+ * Six blocks in the dataset carry it, all in Guadeloupe and Martinique.
+ * Sainte-Rose publishes a median house at 157 €/m² — 13 008 € for 90 m² — with
+ * a first quartile at 80 €/m². These are not cheap markets: they are communes
+ * where a large share of the recorded mutations are not sales at market price
+ * (indivisions, successions, transfers between relatives), which DVF carries
+ * nothing to identify one by one.
+ *
+ * The median absorbs a few such transfers — that is the whole reason the site
+ * publishes medians — but not a quarter of them. The 99th percentile of the
+ * interquartile ratio across the dataset is 2.6, so the rule catches the tail
+ * and nothing else: Courchevel spreads 6 306 → 35 130 €/m² and stays, and
+ * Bourbonne-les-Bains keeps its 449 €/m² median, the cheapest in mainland
+ * France, on a spread of 2.7.
+ */
+const MIN_RANKING_Q1 = 500
+const MAX_RANKING_SPREAD = 4
+
+/**
+ * Whether a type block can be ranked against other communes.
+ *
+ * Only rankings are gated. The figure stays on the commune's own page, next to
+ * the deciles that show what it is made of — suppressing it there would hide
+ * the one place a reader can see the problem. What it cannot do is take first
+ * place in a national ranking of the cheapest communes, where it would arrive
+ * stripped of that context and be read as a price.
+ */
+export const isRankable = (block) =>
+  hasData(block) && !(block.q1 < MIN_RANKING_Q1 && block.q3 / block.q1 > MAX_RANKING_SPREAD)
+
 /** Published types for this commune, best-selling first. */
 export const publishedTypes = (commune) =>
   TYPES.filter((type) => hasData(commune.recent[type])).sort(
@@ -103,7 +137,14 @@ export const rankByEvolution = (list, type, span = 1) => {
       const after = yearEntry(commune, to, type)
       if (!before || !after) return null
       if (Math.min(before.count, after.count) < MIN_RANKING_SALES) return null
-      return { commune, from, to, ratio: after.pricePerSqm / before.pricePerSqm - 1 }
+      return {
+        commune,
+        from,
+        to,
+        before,
+        after,
+        ratio: after.pricePerSqm / before.pricePerSqm - 1,
+      }
     })
     .filter(Boolean)
     .sort((a, b) => b.ratio - a.ratio)

@@ -16,9 +16,21 @@ import { DATASET } from '../lib/dataset.js'
 // once when the dataset is refreshed twice a year.
 const lastmod = DATASET.releaseDate
 
-// 404 and search-index.json are deliberately absent: one is an error page, the
-// other a wire format for the search box, and neither belongs in an index.
-const staticPaths = ['/', '/methodologie', '/mentions-legales']
+// Read off the filesystem rather than listed by hand. Four ranking pages were
+// added in a single afternoon, and nothing but memory stood between them and a
+// sitemap that never mentioned them.
+//
+// Only `.astro` files are picked up, so the endpoints next to them — the search
+// index, llms.txt, this file — stay out by construction: they are wire formats
+// and crawler files, not pages. Dynamic routes are excluded by their brackets;
+// they are enumerated from the data below. That leaves the 404 to name.
+const EXCLUDED = new Set(['404'])
+
+const staticPaths = Object.keys(import.meta.glob('./*.astro'))
+  .map((file) => file.slice(2, -'.astro'.length))
+  .filter((name) => !name.includes('[') && !EXCLUDED.has(name))
+  .map((name) => (name === 'index' ? '/' : `/${name}`))
+  .sort()
 
 export function GET({ site }) {
   const paths = [

@@ -70,6 +70,14 @@ export const TYPE_LABELS = {
   },
 }
 
+/**
+ * Partitive « de » with elision: « de maisons », « d'appartements ». The rule
+ * belongs to the noun, not to the property type, so it takes the word rather
+ * than the type key.
+ */
+export const partitive = (noun) =>
+  /^[aeiouyâàéèêëîïôöùûüh]/i.test(noun) ? `d'${noun}` : `de ${noun}`
+
 /** Agreement suffix for a past participle: « vendu » -> « vendue ». */
 export const agree = (type) => (TYPE_LABELS[type].feminine ? 'e' : '')
 

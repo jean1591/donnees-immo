@@ -1,0 +1,74 @@
+---
+// A one-year variation ranking, one row per commune. Both endpoints are pinned
+// to the same two calendar years for every row — `rankByEvolution` guarantees
+// it — so the column headers can carry the years once instead of each row
+// having to state which two it compares.
+import { formatCount, formatPercent, formatPricePerSqm } from '../lib/format.js'
+
+const { rows, caption } = Astro.props
+const { from, to } = rows[0]
+---
+
+<div class="mt-6 overflow-x-auto rounded-lg border border-hairline bg-surface">
+  <table class="w-full text-sm">
+    <caption class="sr-only">{caption}</caption>
+    <thead class="bg-surface-sunk text-xs text-ink-secondary">
+      <tr>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">#</th>
+        <th scope="col" class="px-4 py-2.5 text-left font-medium">Commune</th>
+        <th scope="col" class="px-4 py-2.5 text-left font-medium">Département</th>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">{from}</th>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">{to}</th>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">Variation</th>
+        <th scope="col" class="px-4 py-2.5 text-right font-medium">Ventes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((entry, index) => (
+          <tr class="border-t border-hairline">
+            <td class="px-4 py-2.5 text-right text-xs text-ink-muted tabular">{index + 1}</td>
+            <th scope="row" class="px-4 py-2.5 text-left font-medium whitespace-nowrap">
+              <a
+                class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+                href={`/prix-immobilier-${entry.commune.slug}`}
+              >
+                {entry.commune.name}
+              </a>
+            </th>
+            <td class="px-4 py-2.5 text-left text-ink-secondary whitespace-nowrap">
+              <a
+                class="underline decoration-hairline underline-offset-2 hover:text-brand-600 hover:decoration-brand-300"
+                href={`/prix-immobilier-departement-${entry.commune.department.slug}`}
+              >
+                {entry.commune.department.name}
+              </a>
+              <span class="ml-1 text-xs text-ink-muted tabular">
+                {entry.commune.department.code}
+              </span>
+            </td>
+            <td class="px-4 py-2.5 text-right text-ink-secondary whitespace-nowrap">
+              {formatPricePerSqm(entry.before.pricePerSqm)}
+            </td>
+            <td class="px-4 py-2.5 text-right whitespace-nowrap">
+              {formatPricePerSqm(entry.after.pricePerSqm)}
+            </td>
+            {/* The arrow carries the direction as well as the colour: a
+                red-green pair is the one distinction part of the audience
+                cannot make. */}
+            <td
+              class="px-4 py-2.5 text-right font-medium whitespace-nowrap"
+              style={`color:${entry.ratio >= 0 ? 'var(--color-up)' : 'var(--color-down)'}`}
+            >
+              <span aria-hidden="true">{entry.ratio >= 0 ? '↑' : '↓'}</span>
+              {formatPercent(entry.ratio)}
+            </td>
+            <td class="px-4 py-2.5 text-right text-ink-secondary">
+              {formatCount(Math.min(entry.before.count, entry.after.count))}
+            </td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>

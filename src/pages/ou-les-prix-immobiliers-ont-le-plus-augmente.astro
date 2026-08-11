@@ -1,0 +1,157 @@
+---
+// One-year variation ranking, rising end. Mirror of
+// ou-les-prix-immobiliers-ont-le-plus-baisse.astro — see the note there on why
+// the two directions are two pages.
+import Base from '../layouts/Base.astro'
+import Breadcrumb from '../components/Breadcrumb.astro'
+import TrendTable from '../components/TrendTable.astro'
+import { trends, TREND_SIZE } from '../lib/rankings.js'
+import { formatCount, formatPercent, formatPercentMagnitude, TYPE_LABELS } from '../lib/format.js'
+
+const series = ['house', 'apartment']
+  .map((type) => ({ type, label: TYPE_LABELS[type], ...trends(type) }))
+  .filter((entry) => entry.eligible)
+
+const { from, to } = series[0]
+const totalEligible = series.reduce((sum, entry) => sum + entry.eligible, 0)
+
+const [houses, apartments] = series
+
+const medians = series
+  .map((entry) => `${formatPercent(entry.median)} pour les ${entry.label.plural}`)
+  .join(' et à ')
+
+const title = `Où les prix immobiliers ont le plus augmenté en ${to}`
+const description = `Les ${TREND_SIZE} communes où le prix médian au m² a le plus progressé entre ${from} et ${to}, maisons et appartements, mesuré sur ${formatCount(totalEligible)} marchés communaux.`
+
+const jsonLd = series.map((entry) => ({
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `Les communes où le prix médian au m² a le plus augmenté entre ${from} et ${to} — ${entry.label.plural}`,
+  description,
+  numberOfItems: entry.rising.length,
+  itemListOrder: 'https://schema.org/ItemListOrderDescending',
+  itemListElement: entry.rising.map((row, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: row.commune.name,
+    url: new URL(`/prix-immobilier-${row.commune.slug}`, Astro.site).href,
+  })),
+}))
+---
+
+<Base title={title} description={description}>
+  <script slot="head" type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+
+  <Breadcrumb
+    items={[{ label: 'Accueil', href: '/' }, { label: `Où les prix ont augmenté en ${to}` }]}
+  />
+
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">
+    Où les prix immobiliers ont le plus augmenté en {to}
+  </h1>
+
+  <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-secondary">
+    Entre {from} et {to}, le prix médian au mètre carré a progressé dans
+    {
+      series.map((entry, index) => (
+        <>
+          <strong class="font-semibold text-ink">
+            {entry.risingCount} des {formatCount(entry.eligible)} communes
+          </strong>
+          {` où le marché des ${entry.label.plural} est assez actif pour mesurer une variation, soit ${formatPercentMagnitude(entry.risingShare)} d'entre elles${index < series.length - 1 ? ', et dans ' : ''}`}
+        </>
+      ))
+    }.
+  </p>
+
+  <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+    Les communes ci-dessous sont les plus fortes hausses du pays, pas la tendance générale : la
+    progression y est sans commune mesure avec celle du reste du marché.
+  </p>
+
+  {
+    series.map((entry) => (
+      <section class="mt-14 border-t border-hairline pt-10">
+        <h2 class="text-xl font-semibold">
+          Les {TREND_SIZE} communes où les {entry.label.plural} ont le plus augmenté
+        </h2>
+        <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+          Sur les {formatCount(entry.eligible)} communes ayant vendu au moins 50{' '}
+          {entry.label.plural} en {from} et 50 en {to}.
+        </p>
+        <TrendTable
+          rows={entry.rising}
+          caption={`Les ${TREND_SIZE} communes où le prix médian au m² des ${entry.label.plural} a le plus progressé entre ${from} et ${to}`}
+        />
+      </section>
+    ))
+  }
+
+  <section class="mt-14 border-t border-hairline pt-10">
+    <h2 class="text-xl font-semibold">Les prix de l'immobilier repartent-ils à la hausse ?</h2>
+    <div class="mt-3 max-w-2xl space-y-3 leading-relaxed text-ink-secondary">
+      <p>
+        Majoritairement oui, mais faiblement. Côté maisons, {houses.risingCount} communes ont
+        progressé contre {houses.fallingCount} en recul ; côté appartements,{' '}
+        {apartments.risingCount} contre {apartments.fallingCount}. La variation médiane reste
+        pourtant à {medians}.
+      </p>
+      <p>
+        Autrement dit, la hausse l'emporte en nombre de communes sans emporter le marché. Les
+        communes classées ci-dessus sont des cas extrêmes, pas la norme.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-14 rounded-xl border border-hairline bg-surface p-6 sm:p-8">
+    <h2 class="text-xl font-semibold">Ce que mesure — et ne mesure pas — ce classement</h2>
+    <ul class="mt-4 space-y-3 text-sm leading-relaxed text-ink-secondary">
+      <li>
+        <strong class="font-medium text-ink">
+          Il faut 50 ventes en {from} et 50 autres en {to}.
+        </strong> En dessous, le prix médian d'une commune se déplace tout seul : entre 30 et
+        50 ventes, une commune sur dix change de 15 % ou plus d'une année sur l'autre, ce qui
+        correspond à la précision du calcul et non à un mouvement du marché. Comme ce classement va
+        chercher les plus fortes variations, ce sont ces communes-là qu'il remonterait en premier.
+        Il ne porte donc que sur {formatCount(totalEligible)} marchés communaux, quand le site en
+        publie plusieurs milliers.
+      </li>
+      <li>
+        <strong class="font-medium text-ink">Une hausse de médiane n'est pas une hausse de prix.</strong>
+        Si les ventes de {to} portent sur des biens plus grands ou mieux situés que celles de{' '}
+        {from}, la médiane monte sans qu'aucun bien n'ait pris de valeur. Sur un an et à 50 ventes,
+        c'est une part réelle de ce que montre le tableau.
+      </li>
+      <li>
+        <strong class="font-medium text-ink">Les deux types de biens restent séparés.</strong> Une
+        commune peut très bien voir ses maisons monter et ses appartements reculer.
+      </li>
+    </ul>
+    <p class="mt-4 text-sm">
+      <a
+        class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700"
+        href="/methodologie"
+      >
+        Méthodologie détaillée
+      </a>
+    </p>
+  </section>
+
+  <nav class="mt-14 mb-14 grid gap-3 sm:grid-cols-2">
+    <a
+      href="/ou-les-prix-immobiliers-ont-le-plus-baisse"
+      class="rounded-xl border border-hairline bg-surface px-5 py-4 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+    >
+      <span class="font-medium">Où les prix ont le plus baissé</span>
+      <span class="mt-1 block text-ink-secondary">Le même classement dans l'autre sens.</span>
+    </a>
+    <a
+      href="/villes-les-plus-cheres-de-france"
+      class="rounded-xl border border-hairline bg-surface px-5 py-4 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+    >
+      <span class="font-medium">Les villes les plus chères de France</span>
+      <span class="mt-1 block text-ink-secondary">Le niveau des prix, pas leur variation.</span>
+    </a>
+  </nav>
+</Base>

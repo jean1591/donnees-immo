@@ -5,11 +5,12 @@
 import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 import { departments } from '../lib/departments.js'
-import { publishedTypes, rankByEvolution } from '../lib/communes.js'
+import { isRankable, publishedTypes, rankByEvolution } from '../lib/communes.js'
 import {
   formatCount,
   formatPercent,
   formatPricePerSqm,
+  plural,
   TYPE_LABELS,
 } from '../lib/format.js'
 
@@ -22,12 +23,20 @@ export function getStaticPaths() {
 
 const { department } = Astro.props
 const communes = department.communes
+const districts = department.districts
+
+// Paris, Lyon and Marseille are one commune each in their own department, so
+// the inventory has to name the arrondissements or the page describes itself
+// as holding a single market.
+const inventory = districts.length
+  ? `${formatCount(communes.length)} ${plural(communes.length, 'commune')} et ${districts.length} arrondissements`
+  : `${formatCount(communes.length)} ${plural(communes.length, 'commune')}`
 
 // Department names carry no gender or article in the dataset, so every
 // generated sentence goes through « le département X » rather than guessing
 // between « en Gironde », « dans le Rhône » and « aux Hauts-de-Seine ».
-const title = `Prix immobilier — ${department.name} (${department.code}), ${communes.length} communes`
-const description = `Prix au m² des ${communes.length} communes du département ${department.name} (${department.code}), calculé sur les ventes enregistrées entre 2021 et 2025. Source DVF.`
+const title = `Prix immobilier — ${department.name} (${department.code}), ${inventory}`
+const description = `Prix au m² des ${inventory} du département ${department.name} (${department.code}), calculé sur les ventes enregistrées entre 2021 et 2025. Source DVF.`
 
 const cell = (commune, type) =>
   commune.recent[type].count ? formatPricePerSqm(commune.recent[type].pricePerSqm) : '—'
@@ -36,7 +45,12 @@ const cell = (commune, type) =>
 // into an apartment ranking would compare two different markets. Houses are
 // published in more communes, so they are the default; apartments take over
 // only where they cover more of the department.
-const withType = (type) => communes.filter((commune) => commune.recent[type].count)
+// `isRankable` rather than a plain published check: in Guadeloupe and
+// Martinique a handful of medians are drawn from mutations that are not sales
+// at market price, and they would take first place in the department's own
+// cheapest list exactly as they would nationally. The table below still shows
+// them — this only governs which communes get ranked against each other.
+const withType = (type) => communes.filter((commune) => isRankable(commune.recent[type]))
 const rankingType = withType('house').length >= withType('apartment').length ? 'house' : 'apartment'
 const ranked = [...withType(rankingType)].sort(
   (a, b) => b.recent[rankingType].pricePerSqm - a.recent[rankingType].pricePerSqm
@@ -107,9 +121,9 @@ const jsonLd = {
   </h1>
 
   <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-secondary">
-    <strong class="font-semibold text-ink">{communes.length}</strong>
-    {communes.length > 1 ? ' communes' : ' commune'} de ce département comptent assez de ventes
-    pour publier un prix médian fiable sur les 24 derniers mois.
+    <strong class="font-semibold text-ink">{inventory}</strong> de ce département{' '}
+    {communes.length + districts.length > 1 ? 'comptent' : 'compte'} assez de ventes pour publier un
+    prix médian fiable sur les 24 derniers mois.
   </p>
 
   <p class="mt-4 max-w-2xl text-sm text-ink-muted">
@@ -153,6 +167,15 @@ const jsonLd = {
           </div>
         ))}
         </div>
+
+        <p class="mt-4 text-sm">
+          <a
+            class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+            href="/villes-les-plus-cheres-de-france"
+          >
+            Voir le classement national des communes les plus chères
+          </a>
+        </p>
       </section>
     )
   }
@@ -198,6 +221,53 @@ const jsonLd = {
             </div>
           ))}
         </div>
+
+        <p class="mt-4 text-sm">
+          À l'échelle du pays, voir où les prix ont le plus{' '}
+          <a
+            class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+            href="/ou-les-prix-immobiliers-ont-le-plus-baisse"
+          >
+            baissé
+          </a>{' '}
+          et le plus{' '}
+          <a
+            class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+            href="/ou-les-prix-immobiliers-ont-le-plus-augmente"
+          >
+            augmenté
+          </a>.
+        </p>
+      </section>
+    )
+  }
+
+  {
+    districts.length > 0 && (
+      <section class="mt-14">
+        <h2 class="text-xl font-semibold">Prix par arrondissement</h2>
+        <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+          Les DVF ne connaissent pas {department.name} comme une commune unique : chaque
+          arrondissement y est un territoire à part, avec ses propres ventes.
+        </p>
+        <ul class="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {districts.map((district) => {
+            const type = publishedTypes(district)[0]
+            return (
+              <li>
+                <a
+                  href={`/prix-immobilier-${district.slug}`}
+                  class="flex items-baseline justify-between gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+                >
+                  <span class="font-medium">{district.name}</span>
+                  <span class="shrink-0 text-ink-secondary tabular">
+                    {formatPricePerSqm(district.recent[type].pricePerSqm)}
+                  </span>
+                </a>
+              </li>
+            )
+          })}
+        </ul>
       </section>
     )
   }
