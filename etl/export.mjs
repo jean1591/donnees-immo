@@ -23,6 +23,22 @@ const OUT = join(ROOT, 'data', 'communes.json')
 // type block is published under the same rule.
 const MIN_SALES = 50
 
+/**
+ * Sales a room-count cell needs over the 24-month window before its own
+ * five-year series is carried into the JSON.
+ *
+ * A room-count cell holds roughly a fifth of a commune's sales, so the yearly
+ * split of one lands an order of magnitude below the commune total: shipping all
+ * 72 514 rows of agg_pieces_annuel would add several megabytes to a file the
+ * build already reads whole, for series nothing can publish. At 100 the export
+ * carries about 2 000 cells — every one that could ever back a figure.
+ *
+ * Deliberately looser than what the site actually publishes: the ETL runs twice
+ * a year against a database that is not deployed, the site rebuilds whenever,
+ * and widening the page selection must not require the former.
+ */
+const MIN_ROOM_SERIES_SALES = 100
+
 // INSEE codes of the three cities rebuilt from their arrondissements.
 const CITY_CODES = new Set(['75056', '69123', '13055'])
 
@@ -86,7 +102,7 @@ const query = async (sql) => {
 // The *_villes tables hold Paris/Lyon/Marseille recomputed from the sales, not
 // averaged from their arrondissements. They sit alongside the arrondissements,
 // which keep their own pages.
-const [recentRows, yearlyRows, roomRows] = await Promise.all([
+const [recentRows, yearlyRows, roomRows, roomYearlyRows] = await Promise.all([
   query(`SELECT code_commune, nom_commune, code_departement, type_local, n,
                 prix_m2_median, prix_m2_d1, prix_m2_q1, prix_m2_q3, prix_m2_d9,
                 prix_median, surface_mediane
@@ -101,11 +117,18 @@ const [recentRows, yearlyRows, roomRows] = await Promise.all([
          UNION ALL
          SELECT code_commune, annee, type_local, n, prix_m2_median, prix_median
          FROM agg_annuel_villes`),
-  query(`SELECT code_commune, type_local, pieces, n, prix_median, prix_m2_median, surface_mediane
+  query(`SELECT code_commune, type_local, pieces, n, prix_median, prix_q1, prix_q3,
+                prix_m2_median, surface_mediane, surface_q1, surface_q3
          FROM agg_pieces
          UNION ALL
-         SELECT code_commune, type_local, pieces, n, prix_median, prix_m2_median, surface_mediane
+         SELECT code_commune, type_local, pieces, n, prix_median, prix_q1, prix_q3,
+                prix_m2_median, surface_mediane, surface_q1, surface_q3
          FROM agg_pieces_villes`),
+  query(`SELECT code_commune, annee, type_local, pieces, n, prix_median, prix_m2_median
+         FROM agg_pieces_annuel
+         UNION ALL
+         SELECT code_commune, annee, type_local, pieces, n, prix_median, prix_m2_median
+         FROM agg_pieces_annuel_villes`),
 ])
 
 connection.closeSync()
@@ -239,6 +262,7 @@ for (const [slug, candidates] of finalSlugs) {
 
 const yearlyByCommune = groupBy(yearlyRows, (r) => r.code_commune)
 const roomsByCommune = groupBy(roomRows, (r) => r.code_commune)
+const roomYearlyByCommune = groupBy(roomYearlyRows, (r) => r.code_commune)
 
 // An empty block explicitly means "nothing publishable here", where a missing
 // key would leave the reader wondering whether the export went wrong.
@@ -275,15 +299,40 @@ const buildYearly = (rows = []) =>
       return entry
     })
 
-const buildRooms = (rows = []) => {
+const buildRooms = (rows = [], yearlyRows = []) => {
+  const seriesByCell = groupBy(yearlyRows, (r) => `${r.type_local}:${num(r.pieces)}`)
+
   const out = { apartment: [], house: [] }
   for (const row of rows) {
+    const count = num(row.n)
+    const series = seriesByCell.get(`${row.type_local}:${num(row.pieces)}`) ?? []
+
     out[TYPES[row.type_local]].push({
       rooms: num(row.pieces),
-      count: num(row.n),
+      count,
       medianPrice: num(row.prix_median),
+      priceQ1: num(row.prix_q1),
+      priceQ3: num(row.prix_q3),
       pricePerSqm: num(row.prix_m2_median),
       medianArea: num(row.surface_mediane),
+      areaQ1: num(row.surface_q1),
+      areaQ3: num(row.surface_q3),
+      // Omitted rather than left empty on thin cells, against the convention the
+      // type blocks follow: `"yearly":[]` on every one of the 23 000 cells that
+      // do not clear the bar is a quarter of a megabyte spelling out an absence
+      // the missing key already states unambiguously for an array.
+      ...(count >= MIN_ROOM_SERIES_SALES && series.length
+        ? {
+            yearly: series
+              .map((entry) => ({
+                year: num(entry.annee),
+                count: num(entry.n),
+                medianPrice: num(entry.prix_median),
+                pricePerSqm: num(entry.prix_m2_median),
+              }))
+              .sort((a, b) => a.year - b.year),
+          }
+        : {}),
     })
   }
   out.apartment.sort((a, b) => a.rooms - b.rooms)
@@ -299,7 +348,7 @@ const communes = selected.map((commune) => ({
   department: commune.department,
   recent: buildRecent(commune.rows),
   yearly: buildYearly(yearlyByCommune.get(commune.code)),
-  rooms: buildRooms(roomsByCommune.get(commune.code)),
+  rooms: buildRooms(roomsByCommune.get(commune.code), roomYearlyByCommune.get(commune.code)),
 }))
 
 // --- write -------------------------------------------------------------------
@@ -320,6 +369,10 @@ const bytes = statSync(OUT).size
 const withHouse = communes.filter((c) => c.recent.house.count).length
 const withApartment = communes.filter((c) => c.recent.apartment.count).length
 
+const allRoomCells = communes.flatMap((c) => [...c.rooms.apartment, ...c.rooms.house])
+const roomCells = allRoomCells.length
+const roomCellsWithSeries = allRoomCells.filter((cell) => cell.yearly).length
+
 console.log(`\ndata/communes.json`)
 console.log(`  communes exported : ${communes.length}`)
 console.log(`    communes           : ${count('commune')}`)
@@ -327,6 +380,7 @@ console.log(`    arrondissements    : ${count('arrondissement')}`)
 console.log(`    aggregated cities  : ${count('city')}`)
 console.log(`  with an apartment median : ${withApartment}`)
 console.log(`  with a house median      : ${withHouse}`)
+console.log(`  room-count cells carrying a series : ${roomCellsWithSeries} of ${roomCells}`)
 console.log(`  size : ${(bytes / 1024 / 1024).toFixed(2)} MB (${bytes.toLocaleString('en-US')} bytes)`)
 
 console.log(`\ndata/homonymes.json`)

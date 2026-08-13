@@ -1,0 +1,207 @@
+---
+// One hub per typology: every commune publishing a T2, T3 or T4, dearest first.
+//
+// It answers a question no single commune page can — where a T3 costs what, and
+// what the spread between French cities actually is — which is the kind of query
+// a search summary cannot produce without the fifty medians underneath it.
+//
+// It is also the fix for a link graph that had none. The 149 detail pages were
+// reachable only from the 50 commune pages carrying one link each, and nothing
+// on the site gathered them: the hub is their table of contents, linked from the
+// homepage and from every detail page.
+import Base from '../layouts/Base.astro'
+import Breadcrumb from '../components/Breadcrumb.astro'
+import RowLinks from '../components/RowLinks.astro'
+import { ROOM_PAGE_TYPE, roomHubPath, roomHubs, roomLeaderboard } from '../lib/rooms.js'
+import { DATASET, RECENT_WINDOW } from '../lib/dataset.js'
+import {
+  formatArea,
+  formatCount,
+  formatEuro,
+  formatPercentMagnitude,
+  formatPricePerSqm,
+  locative,
+  roomLabel,
+} from '../lib/format.js'
+
+export function getStaticPaths() {
+  return roomHubs.map((rooms) => ({
+    params: { rooms: String(rooms) },
+    props: { rooms },
+  }))
+}
+
+const { rooms } = Astro.props
+const type = ROOM_PAGE_TYPE
+const label = roomLabel(rooms, type)
+
+const board = roomLeaderboard(rooms)
+const dearest = board[0]
+const cheapest = board.at(-1)
+const spread = dearest.cell.pricePerSqm / cheapest.cell.pricePerSqm
+
+// The middle row of the list. Not « the median French T3 »: it is the median of
+// fifty commune medians, over the largest markets only, which is a different and
+// dearer quantity than the median of the country's sales. The prose says so.
+const middle = board[Math.floor((board.length - 1) / 2)]
+
+const totalSales = board.reduce((sum, entry) => sum + entry.cell.count, 0)
+const others = roomHubs.filter((other) => other !== rooms)
+
+const title = `Prix d'un ${label} par ville — ${board.length} villes`
+const description = `Prix d'un appartement ${rooms} pièces (${label}) dans ${board.length} villes françaises, du plus cher au moins cher. De ${formatPricePerSqm(cheapest.cell.pricePerSqm)} ${locative(cheapest.commune.name)} à ${formatPricePerSqm(dearest.cell.pricePerSqm)} ${locative(dearest.commune.name)}, sur ${formatCount(totalSales)} ventes (DVF).`
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: `Prix d'un ${label} par ville`,
+  description,
+  license: DATASET.licenseUrl,
+  creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  temporalCoverage: `${RECENT_WINDOW.firstYear}/${RECENT_WINDOW.lastYear}`,
+  spatialCoverage: { '@type': 'Country', name: 'France' },
+  isBasedOn: DATASET.sourceUrl,
+  variableMeasured: {
+    '@type': 'PropertyValue',
+    name: `Prix médian au m² — appartement ${rooms} pièces`,
+    unitText: 'EUR/m²',
+    minValue: cheapest.cell.pricePerSqm,
+    maxValue: dearest.cell.pricePerSqm,
+    measurementTechnique: `Médiane par commune sur les ventes ${RECENT_WINDOW.prose}`,
+  },
+}
+---
+
+<Base title={title} description={description}>
+  <script
+    slot="head"
+    type="application/ld+json"
+    is:inline
+    set:html={JSON.stringify(jsonLd)}
+  />
+
+  <Breadcrumb items={[{ label: 'Accueil', href: '/' }, { label: `${label} par ville` }]} />
+
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">Prix d'un {label} par ville</h1>
+
+  <p class="mt-5 max-w-2xl text-xl leading-relaxed">
+    Un appartement de {rooms} pièces se vend
+    <strong class="font-semibold">{formatEuro(cheapest.cell.medianPrice)}</strong>
+    {locative(cheapest.commune.name)} et
+    <strong class="font-semibold">{formatEuro(dearest.cell.medianPrice)}</strong>
+    {locative(dearest.commune.name)}.
+  </p>
+
+  <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+    Au mètre carré, l'écart entre la ville la plus chère et la moins chère est de
+    {/* One decimal at most, and none when it is a round figure: « 9,0 fois »
+        claims a precision the sentence does not need. */}
+    <strong class="font-medium text-ink">
+      {spread.toLocaleString('fr-FR', { maximumFractionDigits: 1 })}
+    </strong> fois. Ces
+    médianes portent sur {formatCount(totalSales)} ventes de {label} enregistrées{' '}
+    {RECENT_WINDOW.between}, dans les {board.length} villes où cette typologie s'échange assez pour
+    que le chiffre tienne.
+  </p>
+
+  <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+    La ville qui occupe le milieu du classement, {middle.commune.name}, affiche{' '}
+    <strong class="font-medium text-ink">
+      {formatPricePerSqm(middle.cell.pricePerSqm)}
+    </strong>. C'est le milieu de cette liste, pas celui de la France : elle ne retient que les plus
+    grands marchés, où les prix sont plus élevés qu'ailleurs.
+  </p>
+
+  <div class="mt-10 overflow-x-auto rounded-lg border border-hairline bg-surface">
+    <table class="w-full text-sm">
+      <caption class="border-b border-hairline px-4 py-3 text-left text-sm font-semibold">
+        {board.length} villes, du {label} le plus cher au moins cher
+      </caption>
+      <thead class="bg-surface-sunk text-xs text-ink-secondary">
+        <tr>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">#</th>
+          <th scope="col" class="px-4 py-2.5 text-left font-medium">Ville</th>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">Prix au m²</th>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">Prix de vente</th>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">Surface</th>
+          <th scope="col" class="px-4 py-2.5 text-right font-medium">Ventes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          board.map((entry, index) => (
+            <tr
+              data-href={entry.href}
+              class="cursor-pointer border-t border-hairline transition-colors hover:bg-brand-100"
+            >
+              <td class="px-4 py-2.5 text-right text-xs text-ink-muted tabular">{index + 1}</td>
+              <th scope="row" class="px-4 py-2.5 text-left font-medium">
+                <a
+                  class="inline-flex items-center gap-1 font-semibold text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700 hover:decoration-brand-500"
+                  href={entry.href}
+                >
+                  {entry.commune.name}
+                  {/* Inside the link so the arrow trails the whole label rather
+                      than splitting the name from its department code. */}
+                  <span class="text-xs font-normal text-ink-muted">
+                    {entry.commune.department.code}
+                  </span>
+                  <span aria-hidden="true" class="text-xs">
+                    →
+                  </span>
+                </a>
+              </th>
+              <td class="px-4 py-2.5 text-right">{formatPricePerSqm(entry.cell.pricePerSqm)}</td>
+              <td class="px-4 py-2.5 text-right">{formatEuro(entry.cell.medianPrice)}</td>
+              <td class="px-4 py-2.5 text-right text-ink-secondary">
+                {formatArea(entry.cell.medianArea)}
+              </td>
+              <td class="px-4 py-2.5 text-right text-ink-secondary">
+                {formatCount(entry.cell.count)}
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p class="mt-3 text-xs text-ink-muted">
+    Une ville figure ici si elle a enregistré au moins 100 ventes de {label} {RECENT_WINDOW.prose}.
+    En deçà, la marge d'erreur sur la médiane dépasse ce qu'une comparaison entre villes peut
+    supporter.
+  </p>
+
+  <section class="my-14">
+    <h2 class="text-xl font-semibold">Les autres typologies</h2>
+    <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+      {
+        [
+          ...others.map((other) => ({
+            href: roomHubPath(other),
+            label: `Prix d'un ${roomLabel(other, type)} par ville`,
+          })),
+          {
+            href: '/villes-les-plus-cheres-de-france',
+            label: 'Les villes les plus chères de France, tous logements',
+          },
+          {
+            href: '/villes-les-moins-cheres-de-france',
+            label: 'Les villes les moins chères de France',
+          },
+        ].map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class="block rounded-lg border border-hairline bg-surface px-4 py-3 text-sm font-medium transition-colors hover:border-brand-300 hover:bg-brand-100"
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <RowLinks />
+</Base>

@@ -3,18 +3,35 @@
 // two-slot categorical palette (validated against the cream surface).
 // The table below the chart is its accessible twin: no value is reachable
 // through hover alone.
-import { formatPricePerSqm } from '../lib/format.js'
+import { formatCount, formatPricePerSqm } from '../lib/format.js'
 import { TYPE_LABELS } from '../lib/format.js'
 
-const { yearly, types } = Astro.props
+// `labels` overrides the legend when the series is not the whole property type —
+// a room-count page plots one typology, and calling its line « Appartements »
+// would name a market ten times larger than the one drawn.
+// `subject` names what the lines split on, for the image's alternative text.
+//
+// `volume` adds the yearly sale count as bars behind the line, on its own axis.
+// Two scales in one frame invite a comparison neither supports, so the bars are
+// kept subordinate on every axis that carries meaning: they sit behind, they are
+// the only thing anchored to zero — a count has a zero, a price level does not —
+// and they take a neutral tone rather than a third series colour, which would
+// read as a third market. Orange stays apartments and blue stays houses.
+const { yearly, types, labels = {}, subject = 'type de bien', volume = null } = Astro.props
+
+const bars = volume?.length ? volume : null
 
 const WIDTH = 720
 const HEIGHT = 280
-const PAD = { top: 16, right: 84, bottom: 36, left: 60 }
+// The right margin holds the endpoint label; with bars it also holds their axis,
+// which is why it widens rather than letting the two land on each other.
+const PAD = { top: 16, right: bars ? 118 : 84, bottom: 36, left: 60 }
 const PLOT = {
   width: WIDTH - PAD.left - PAD.right,
   height: HEIGHT - PAD.top - PAD.bottom,
 }
+
+const VOLUME_COLOR = 'var(--color-baseline)'
 
 const SERIES_COLOR = {
   apartment: 'var(--color-series-apartment)',
@@ -50,6 +67,25 @@ const x = (year) =>
   (years.length === 1 ? PLOT.width / 2 : (years.indexOf(year) / (years.length - 1)) * PLOT.width)
 const y = (value) => PAD.top + PLOT.height - ((value - yMin) / (yMax - yMin)) * PLOT.height
 
+// Counts start at zero and are read against three ticks: enough to size a bar,
+// few enough that the right-hand axis never competes with the price axis for
+// attention. The bars are context, not the subject of the chart.
+const volumeMax = bars ? Math.max(...bars.map((entry) => entry.count)) : 0
+const volumeStep = volumeMax ? niceStep(volumeMax, 2) : 0
+const volumeTop = volumeMax ? Math.ceil(volumeMax / volumeStep) * volumeStep : 0
+// Guarded on the step, not on `bars`: without volume the step is 0, and a loop
+// incrementing by 0 never reaches its bound — it pushes until the array refuses
+// to grow, which is what took the commune pages down.
+const volumeTicks = []
+if (volumeStep > 0) {
+  for (let value = volumeStep; value <= volumeTop + 1; value += volumeStep) volumeTicks.push(value)
+}
+
+// Half the slot, so neighbouring bars never touch: a gap says « five separate
+// years » where a continuous block would say « one distribution ».
+const barWidth = bars ? (PLOT.width / Math.max(years.length, 1)) * 0.5 : 0
+const barHeight = (count) => (volumeTop ? (count / volumeTop) * PLOT.height : 0)
+
 // A year without a median breaks the path instead of bridging the gap, which
 // would imply a continuity that was never measured.
 const series = types.map((type) => {
@@ -69,7 +105,7 @@ const series = types.map((type) => {
   return {
     type,
     color: SERIES_COLOR[type],
-    label: TYPE_LABELS[type].title,
+    label: labels[type] ?? TYPE_LABELS[type].title,
     points: drawn,
     last: drawn.at(-1),
     paths: segments
@@ -104,6 +140,20 @@ for (const s of labelled) s.labelY ??= s.last.y
           </li>
         ))
       }
+      {
+        bars && (
+          /* A square against the series' dots: the shape carries the difference
+             between a bar and a line even where the two tones do not. */
+          <li class="flex items-center gap-1.5">
+            <span
+              class="inline-block h-2 w-2 shrink-0 rounded-[1px]"
+              style={`background:${VOLUME_COLOR}`}
+              aria-hidden="true"
+            />
+            Ventes
+          </li>
+        )
+      }
     </ul>
   </figcaption>
 
@@ -112,31 +162,70 @@ for (const s of labelled) s.labelY ??= s.last.y
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       class="h-auto w-full min-w-[480px]"
       role="img"
-      aria-label={`Prix médian au mètre carré de ${years[0]} à ${years.at(-1)}, par type de bien. Les valeurs sont reprises dans le tableau qui suit.`}
+      aria-label={`Prix médian au mètre carré de ${years[0]} à ${years.at(-1)}, par ${subject}${bars ? ', et nombre de ventes par année' : ''}. Les valeurs sont reprises dans le tableau qui suit.`}
     >
       {
         ticks.map((tick) => (
-          <g>
-            <line
-              x1={PAD.left}
-              x2={WIDTH - PAD.right}
-              y1={y(tick)}
-              y2={y(tick)}
-              stroke="var(--color-hairline)"
-              stroke-width="1"
-            />
+          <line
+            x1={PAD.left}
+            x2={WIDTH - PAD.right}
+            y1={y(tick)}
+            y2={y(tick)}
+            stroke="var(--color-hairline)"
+            stroke-width="1"
+          />
+        ))
+      }
+
+      {
+        bars &&
+          bars.map((entry) => (
+            <rect
+              x={x(entry.year) - barWidth / 2}
+              y={PAD.top + PLOT.height - barHeight(entry.count)}
+              width={barWidth}
+              height={barHeight(entry.count)}
+              rx="2"
+              fill={VOLUME_COLOR}
+              opacity="0.55"
+            >
+              <title>{`${entry.year} : ${formatCount(entry.count)} ventes`}</title>
+            </rect>
+          ))
+      }
+
+      {/* Axis labels are painted after the bars, not with their gridlines: an
+          edge bar reaches under the label column, and a tick a reader cannot
+          make out costs more than a bar drawn over. */}
+      {
+        ticks.map((tick) => (
+          <text
+            x={PAD.left - 10}
+            y={y(tick)}
+            text-anchor="end"
+            dominant-baseline="middle"
+            fill="var(--color-ink-muted)"
+            style="font-size:12px;font-variant-numeric:tabular-nums"
+          >
+            {tick.toLocaleString('fr-FR')}
+          </text>
+        ))
+      }
+
+      {
+        bars &&
+          volumeTicks.map((tick) => (
             <text
-              x={PAD.left - 10}
-              y={y(tick)}
+              x={WIDTH - 6}
+              y={PAD.top + PLOT.height - barHeight(tick)}
               text-anchor="end"
               dominant-baseline="middle"
               fill="var(--color-ink-muted)"
-              style="font-size:12px;font-variant-numeric:tabular-nums"
+              style="font-size:11px;font-variant-numeric:tabular-nums"
             >
               {tick.toLocaleString('fr-FR')}
             </text>
-          </g>
-        ))
+          ))
       }
 
       <line
@@ -200,7 +289,11 @@ for (const s of labelled) s.labelY ??= s.last.y
   </div>
 
   <p class="mt-2 text-xs text-ink-muted">
-    Médiane annuelle, en euros par mètre carré. Les valeurs exactes et le nombre de ventes
-    figurent dans le tableau ci-dessous.
+    Médiane annuelle, en euros par mètre carré, sur l'axe de gauche.
+    {
+      bars &&
+        ' Les barres donnent le nombre de ventes de l’année, sur l’axe de droite : elles disent sur combien de ventes la médiane est calculée, pas si les prix montent.'
+    }
+    {' '}Les valeurs exactes et le nombre de ventes figurent dans le tableau ci-dessous.
   </p>
 </figure>

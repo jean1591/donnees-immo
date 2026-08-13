@@ -4,7 +4,13 @@ import { allCommunes, publishedTypes } from '../lib/communes.js'
 import { departments } from '../lib/departments.js'
 import { groupByRegion } from '../lib/regions.js'
 import { cheapest, dearest, trends } from '../lib/rankings.js'
-import { formatCount, formatPercentMagnitude, formatPricePerSqm } from '../lib/format.js'
+import { roomHubPath, roomHubs, roomLeaderboard } from '../lib/rooms.js'
+import {
+  formatCount,
+  formatPercentMagnitude,
+  formatPricePerSqm,
+  roomLabel,
+} from '../lib/format.js'
 import { DATASET } from '../lib/dataset.js'
 
 const regions = groupByRegion(departments)
@@ -137,6 +143,45 @@ const jsonLd = {
     </ul>
   </section>
 
+  {/* The hubs are the only route into the 149 typology pages that does not go
+      through a commune page first — without this section a visitor asking « et
+      un T3, ça vaut combien » has nowhere to start. */}
+  <section class="mt-14 border-t border-hairline pt-10">
+    <h2 class="text-xl font-semibold">Par typologie</h2>
+    <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+      Le prix d'un appartement selon son nombre de pièces, dans les villes où il s'en vend assez
+      pour que le chiffre tienne.
+    </p>
+    <ul class="mt-5 grid gap-3 sm:grid-cols-3">
+      {
+        roomHubs.map((rooms) => {
+          const board = roomLeaderboard(rooms)
+          const middle = board[Math.floor((board.length - 1) / 2)]
+          return (
+            <li>
+              <a
+                href={roomHubPath(rooms)}
+                class="flex h-full flex-col rounded-xl border border-hairline bg-surface p-5 transition-colors hover:border-brand-300 hover:bg-brand-100"
+              >
+                <span class="text-sm font-semibold">
+                  Prix d'un {roomLabel(rooms, 'apartment')} par ville
+                </span>
+                <span class="mt-3 text-lg font-semibold text-brand-600 tabular">
+                  {formatPricePerSqm(middle.cell.pricePerSqm)}
+                </span>
+                <span class="mt-1 text-xs text-ink-secondary">
+                  Au milieu de {board.length} villes, de{' '}
+                  {formatPricePerSqm(board.at(-1).cell.pricePerSqm)} à{' '}
+                  {formatPricePerSqm(board[0].cell.pricePerSqm)}.
+                </span>
+              </a>
+            </li>
+          )
+        })
+      }
+    </ul>
+  </section>
+
   <section class="mt-14 border-t border-hairline pt-10">
     <h2 class="text-xl font-semibold">Les plus grandes villes</h2>
     <ul class="mt-5 grid gap-x-8 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -246,7 +291,8 @@ const jsonLd = {
     for (const match of matches) {
       const item = document.createElement('li')
       const link = document.createElement('a')
-      link.href = `/prix-immobilier-${match.s}`
+      // Typology entries carry their own address; everything else is a commune.
+      link.href = match.u ?? `/prix-immobilier-${match.s}`
       link.className =
         'flex items-baseline justify-between gap-3 rounded-lg border border-hairline bg-surface px-4 py-3 text-sm transition-colors hover:border-brand-300 hover:bg-brand-100'
 
@@ -267,12 +313,14 @@ const jsonLd = {
       results.append(item)
     }
 
+    // « résultat » rather than « commune » since the index now also holds
+    // typology pages, which are not communes.
     status.textContent =
       query.length < 2
         ? ''
         : matches.length === 0
-          ? 'Aucune commune trouvée.'
-          : `${matches.length} commune${matches.length > 1 ? 's' : ''} proposée${matches.length > 1 ? 's' : ''}.`
+          ? 'Aucun résultat.'
+          : `${matches.length} résultat${matches.length > 1 ? 's' : ''} proposé${matches.length > 1 ? 's' : ''}.`
   }
 
   const search = async () => {
@@ -289,11 +337,18 @@ const jsonLd = {
     const exact = []
     const prefix = []
     const inner = []
-    for (const commune of index) {
-      if (commune.q === query) exact.push(commune)
-      else if (commune.q.startsWith(query)) prefix.push(commune)
-      else if (commune.q.includes(query)) inner.push(commune)
+    // `a` is the typology entries' reversed key — « bordeauxt3 » as well as
+    // « t3bordeaux » — so neither word order comes up empty.
+    const tier = (entry) => {
+      for (const key of [entry.q, entry.a]) {
+        if (!key) continue
+        if (key === query) return exact
+        if (key.startsWith(query)) return prefix
+        if (key.includes(query)) return inner
+      }
+      return null
     }
+    for (const commune of index) tier(commune)?.push(commune)
     const byVolume = (a, b) => b.v - a.v
     const matches = [exact.sort(byVolume), prefix.sort(byVolume), inner.sort(byVolume)].flat()
     render(matches.slice(0, MAX_RESULTS), query)

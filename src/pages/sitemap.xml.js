@@ -9,6 +9,7 @@
 
 import { allCommunes } from '../lib/communes.js'
 import { departments } from '../lib/departments.js'
+import { roomHubPath, roomHubs, roomPagePath, roomPages } from '../lib/rooms.js'
 import { DATASET } from '../lib/dataset.js'
 
 // Everything is regenerated from the same DVF release, so the whole site shares
@@ -37,6 +38,10 @@ export function GET({ site }) {
     ...staticPaths,
     ...allCommunes.map((commune) => `/prix-immobilier-${commune.slug}`),
     ...departments.map((department) => `/prix-immobilier-departement-${department.slug}`),
+    // The hubs are dynamic routes, so the glob above skips them by their
+    // brackets the same way it skips the commune pages: both are listed here.
+    ...roomHubs.map((rooms) => roomHubPath(rooms)),
+    ...roomPages.map(({ commune, rooms }) => roomPagePath(commune, rooms)),
   ]
 
   // No XML escaping: every path is built from slugs, which are already reduced

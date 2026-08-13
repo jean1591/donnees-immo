@@ -3,13 +3,21 @@
 // without hover and without color.
 import { formatCount, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
 
-const { yearly, types } = Astro.props
+// `labels` mirrors the chart's override — the two are read together, so a header
+// naming a wider market than the line above it is worse than no header.
+// `minSales` is the bar the caller applied before handing the series over; the
+// footnote states it, and a room-count series is gated three times higher than a
+// commune one.
+// `subject` names what the columns split on, for the caption a screen reader
+// announces before the numbers — « type de bien » on a commune page, but the
+// room-count pages split on one typology of one type.
+const { yearly, types, labels = {}, minSales = 10, subject = 'type de bien' } = Astro.props
 ---
 
 <div class="overflow-x-auto rounded-lg border border-hairline bg-surface">
   <table class="w-full text-sm">
     <caption class="sr-only">
-      Prix médian au mètre carré et nombre de ventes, par année et par type de bien
+      Prix médian au mètre carré et nombre de ventes, par année et par {subject}
     </caption>
     <thead class="bg-surface-sunk text-xs text-ink-secondary">
       <tr>
@@ -18,7 +26,7 @@ const { yearly, types } = Astro.props
           types.map((type) => (
             <>
               <th scope="col" class="px-4 py-2.5 text-right font-medium">
-                {TYPE_LABELS[type].title} €/m²
+                {labels[type] ?? TYPE_LABELS[type].title} €/m²
               </th>
               <th scope="col" class="px-4 py-2.5 text-right font-medium">
                 Ventes
@@ -52,5 +60,5 @@ const { yearly, types } = Astro.props
   </table>
 </div>
 <p class="mt-2 text-xs text-ink-muted">
-  « — » signale une année comptant moins de 10 ventes, trop peu pour publier une médiane.
+  « — » signale une année comptant moins de {minSales} ventes, trop peu pour publier une médiane.
 </p>

@@ -1,0 +1,76 @@
+---
+// Interquartile range of every typology in the commune, on one shared scale,
+// with the page's own typology picked out.
+//
+// A quartile range drawn alone would have to invent its own axis: q1 and q3 are
+// the only two values there are, so the bar would fill the width whatever the
+// spread, and any padding around it would be a number nobody measured. Drawing
+// the typologies against each other solves that with real data — the scale runs
+// from the lowest q1 to the highest q3 — and answers the comparison a reader
+// makes anyway, one typology against the one above it.
+//
+// Values are printed beside every bar rather than left to the geometry: nothing
+// here is reachable by looking at a length alone.
+import { roomLabel } from '../lib/format.js'
+
+// `legend` says how to read a bar. It is written by the caller rather than held
+// here because the same geometry carries prices in one instance and surfaces in
+// the other, and « un quart sont partis moins cher » has no surface equivalent
+// that is not a contortion.
+const { rows, format, title, note, legend, type } = Astro.props
+
+const low = Math.min(...rows.map((row) => row.lo))
+const high = Math.max(...rows.map((row) => row.hi))
+// Equal quartiles across every row is theoretical; the division by zero is not.
+const span = high - low || 1
+const position = (value) => ((value - low) / span) * 100
+
+const color = type === 'house' ? 'var(--color-series-house)' : 'var(--color-series-apartment)'
+---
+
+<section class="my-14">
+  <h2 class="text-xl font-semibold">{title}</h2>
+  <p class="mt-1 text-sm text-ink-secondary">{note}</p>
+
+  <div class="mt-6 space-y-5">
+    {
+      rows.map((row) => (
+        <div>
+          <div class="flex items-baseline justify-between gap-4">
+            <h3
+              class:list={[
+                'text-sm',
+                row.current ? 'font-semibold text-brand-700' : 'font-medium text-ink-secondary',
+              ]}
+            >
+              {roomLabel(row.rooms, type)}
+              {row.current && <span class="sr-only"> (page en cours)</span>}
+            </h3>
+            <p class="text-sm tabular">
+              <span class:list={['font-semibold', row.current ? 'text-ink' : 'text-ink-secondary']}>
+                {format(row.mid)}
+              </span>
+              <span class="ml-2 text-xs text-ink-muted">
+                {format(row.lo)} – {format(row.hi)}
+              </span>
+            </p>
+          </div>
+
+          <div class="relative mt-2 h-4" aria-hidden="true">
+            <div class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-hairline" />
+            <div
+              class="absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
+              style={`left:${position(row.lo)}%;width:${position(row.hi) - position(row.lo)}%;background:color-mix(in oklab, ${color} ${row.current ? 45 : 20}%, var(--color-surface))`}
+            />
+            <div
+              class="absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={`left:${position(row.mid)}%;background:${row.current ? color : 'var(--color-baseline)'}`}
+            />
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <p class="mt-4 text-xs text-ink-muted">{legend}</p>
+</section>

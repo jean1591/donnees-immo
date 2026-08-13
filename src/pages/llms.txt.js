@@ -14,6 +14,7 @@
 
 import { allCommunes } from '../lib/communes.js'
 import { departments } from '../lib/departments.js'
+import { roomHubPath, roomHubs, roomPages } from '../lib/rooms.js'
 import { rankedCount } from '../lib/rankings.js'
 import { formatCount } from '../lib/format.js'
 import { DATASET } from '../lib/dataset.js'
@@ -37,11 +38,13 @@ Site statique. Tous les chiffres sont dans le HTML, aucun n'est chargé en JavaS
 - ${formatCount(communes.length)} communes et ${districts} arrondissements (Paris, Lyon, Marseille), répartis sur ${formatCount(departments.length)} départements.
 - Prix médian au m² et prix de vente médian, par type de bien : ${formatCount(rankedCount('apartment'))} communes publient un prix appartement, ${formatCount(rankedCount('house'))} un prix maison.
 - Séries annuelles ${DATASET.firstYear}-${DATASET.lastYear}, répartition par nombre de pièces, déciles et quartiles.
+- ${formatCount(roomPages.length)} pages de typologie (T2, T3, T4) sur les plus grands marchés d'appartements : prix et surface d'une typologie précise, écart avec la typologie voisine, série annuelle propre à cette typologie.
 
 ## Adresses
 
 - Une commune : ${pattern('/prix-immobilier-{slug}')} — par exemple ${url('/prix-immobilier-bordeaux')}
 - Un département : ${pattern('/prix-immobilier-departement-{slug}')} — par exemple ${url('/prix-immobilier-departement-gironde')}
+- Une typologie dans une commune : ${pattern('/prix-appartement-{pieces}-pieces-{slug}')} — par exemple ${url('/prix-appartement-3-pieces-montreuil')}. Seulement pour 2, 3 et 4 pièces, et seulement là où cette typologie compte au moins 100 ventes sur 24 mois.
 - Le slug est le nom de la commune en minuscules, sans accents ni apostrophes, espaces remplacés par des tirets. Les communes homonymes portent un suffixe de département : ${url('/prix-immobilier-saint-denis')} est celui de Seine-Saint-Denis, ${url('/prix-immobilier-saint-denis-974')} celui de La Réunion.
 - Liste exhaustive des pages : ${url('/sitemap.xml')}
 
@@ -53,6 +56,7 @@ Site statique. Tous les chiffres sont dans le HTML, aucun n'est chargé en JavaS
 - [Les villes les moins chères de France](${url('/villes-les-moins-cheres-de-france')}) : le même classement par l'autre bout.
 - [Où les prix ont le plus baissé](${url('/ou-les-prix-immobiliers-ont-le-plus-baisse')}) : les plus fortes baisses d'une année sur l'autre, commune par commune.
 - [Où les prix ont le plus augmenté](${url('/ou-les-prix-immobiliers-ont-le-plus-augmente')}) : le même classement dans l'autre sens.
+${roomHubs.map((rooms) => `- [Prix d'un T${rooms} par ville](${url(roomHubPath(rooms))}) : les villes classées sur cette seule typologie, du plus cher au moins cher.`).join('\n')}
 - [Mentions légales](${url('/mentions-legales')}).
 
 ## À savoir avant de citer un chiffre

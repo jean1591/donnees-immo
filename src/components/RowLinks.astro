@@ -1,0 +1,30 @@
+---
+// Makes every `<tr data-href>` on the page navigable, as an enhancement over the
+// link that is already in the row's header cell.
+//
+// A `tr` cannot be an anchor, and both alternatives cost more than they give.
+// Wrapping every cell would announce five identical links per row to a screen
+// reader; stretching one anchor across the row with `position:absolute` needs no
+// script but swallows text selection, which on tables whose whole purpose is
+// figures people copy is the wrong trade.
+//
+// So the accessible, crawlable, JavaScript-free path stays the anchor in the
+// first cell, and this only widens the target for a mouse. Emitted as its own
+// component rather than inline in each table so the site ships one copy of it.
+---
+
+<script>
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    // The real link, and any other, handles its own click.
+    if (target.closest('a')) return
+
+    const row = target.closest<HTMLElement>('tr[data-href]')
+    if (!row) return
+
+    // A click that ends a drag is a selection, not a navigation.
+    if (window.getSelection()?.toString()) return
+
+    window.location.href = row.dataset.href!
+  })
+</script>

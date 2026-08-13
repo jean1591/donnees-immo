@@ -8,6 +8,8 @@
 
 import { allCommunes } from '../lib/communes.js'
 import { publishedTypes } from '../lib/communes.js'
+import { ROOM_PAGE_TYPE, roomPagePath, roomPages } from '../lib/rooms.js'
+import { roomLabel } from '../lib/format.js'
 
 /**
  * Separators are dropped entirely rather than normalised to spaces, so
@@ -36,6 +38,30 @@ export function GET() {
       v: types.reduce((sum, type) => sum + commune.recent[type].count, 0),
     }
   })
+
+  // Typology pages, so « T3 Bordeaux » from the homepage lands on the page that
+  // answers it rather than on the commune and a table to scroll.
+  //
+  // Two keys because word order is not something anyone gets right on purpose:
+  // `q` matches « t3bordeaux », `a` matches « bordeauxt3 ». `u` carries the
+  // address, since these are the only entries not built from the commune
+  // pattern. Their `v` is the cell's own sale count, an order of magnitude below
+  // a commune total, which keeps them under the commune itself on a bare name.
+  const typologies = roomPages.map(({ commune, rooms, cell }) => {
+    const label = roomLabel(rooms, ROOM_PAGE_TYPE)
+    return {
+      n: `${label} ${commune.name}`,
+      s: commune.slug,
+      u: roomPagePath(commune, rooms),
+      d: commune.department.code,
+      q: searchable(`${label}${commune.name}`),
+      a: searchable(`${commune.name}${label}`),
+      p: cell.pricePerSqm,
+      v: cell.count,
+    }
+  })
+
+  index.push(...typologies)
 
   // Cached forever, because the URL carries the release date: the homepage
   // requests `?v=<releaseDate>`, so a new dataset is a new URL. A plain

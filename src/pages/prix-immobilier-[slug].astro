@@ -26,6 +26,7 @@ import {
   partitive,
   TYPE_LABELS,
 } from '../lib/format.js'
+import { RECENT_WINDOW } from '../lib/dataset.js'
 
 export function getStaticPaths() {
   return allCommunes.map((commune) => ({ params: { slug: commune.slug }, props: { commune } }))
@@ -133,8 +134,8 @@ const jsonLd = {
 
   <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
     C'est le prix médian des {formatCount(lead.count)} {leadLabel.plural} vendu{agree(types[0])}s
-    ces deux dernières années : la moitié sont parti{agree(types[0])}s au-dessus de ce prix, l'autre
-    moitié en dessous.
+    {' '}{RECENT_WINDOW.between} : la moitié sont parti{agree(types[0])}s au-dessus de ce prix,
+    l'autre moitié en dessous.
     {
       leadTrend && (
         <>
@@ -165,7 +166,7 @@ const jsonLd = {
 
   <PriceRange commune={commune} types={types} />
 
-  <RoomsTable rooms={commune.rooms} types={types} />
+  <RoomsTable rooms={commune.rooms} types={types} commune={commune} />
 
   {
     children.length > 0 && (

@@ -26,16 +26,41 @@ FROM ventes
 GROUP BY 1,2,3
 HAVING count(*) >= 10;
 
+-- Quartiles on the price and on the surface, not only on the price per sqm as
+-- agg_recent does. A typology page states two spreads a commune page cannot:
+-- what half the T3 actually sold for, and what a T3 measures locally — 61 m² in
+-- Montreuil, half of them between 53 and 67. Deciles are left out: at cell
+-- level the sample is an order of magnitude thinner than the commune total, and
+-- D1/D9 there would describe the tail of a few dozen sales.
 CREATE OR REPLACE TABLE agg_pieces AS
 SELECT code_commune, type_local,
-       least(pieces, 5)       AS pieces,
-       count(*)               AS n,
-       round(median(prix))    AS prix_median,
-       round(median(prix_m2)) AS prix_m2_median,
-       round(median(surface)) AS surface_mediane
+       least(pieces, 5)                    AS pieces,
+       count(*)                            AS n,
+       round(median(prix))                 AS prix_median,
+       round(quantile_cont(prix, 0.25))    AS prix_q1,
+       round(quantile_cont(prix, 0.75))    AS prix_q3,
+       round(median(prix_m2))              AS prix_m2_median,
+       round(median(surface))              AS surface_mediane,
+       round(quantile_cont(surface, 0.25)) AS surface_q1,
+       round(quantile_cont(surface, 0.75)) AS surface_q3
 FROM ventes
 WHERE annee >= 2024 AND pieces BETWEEN 1 AND 20
 GROUP BY 1,2,3
+HAVING count(*) >= 10;
+
+-- Five-year series, one typology at a time — agg_annuel only splits by property
+-- type, which cannot say whether a commune's fall was carried by its small flats
+-- or its large ones. Same 10-sale floor as agg_annuel: enough to plot a point,
+-- not enough to subtract two, and the site raises the bar where it does so.
+CREATE OR REPLACE TABLE agg_pieces_annuel AS
+SELECT code_commune, annee, type_local,
+       least(pieces, 5)       AS pieces,
+       count(*)               AS n,
+       round(median(prix))    AS prix_median,
+       round(median(prix_m2)) AS prix_m2_median
+FROM ventes
+WHERE pieces BETWEEN 1 AND 20
+GROUP BY 1,2,3,4
 HAVING count(*) >= 10;
 
 CREATE OR REPLACE TABLE agg_recent_villes AS
@@ -80,11 +105,29 @@ SELECT
        WHEN code_commune LIKE '6938%' THEN '69123'
        WHEN code_commune LIKE '132%'  THEN '13055' END AS code_commune,
   type_local, least(pieces, 5) AS pieces,
-  count(*)               AS n,
-  round(median(prix))    AS prix_median,
-  round(median(prix_m2)) AS prix_m2_median,
-  round(median(surface)) AS surface_mediane
+  count(*)                            AS n,
+  round(median(prix))                 AS prix_median,
+  round(quantile_cont(prix, 0.25))    AS prix_q1,
+  round(quantile_cont(prix, 0.75))    AS prix_q3,
+  round(median(prix_m2))              AS prix_m2_median,
+  round(median(surface))              AS surface_mediane,
+  round(quantile_cont(surface, 0.25)) AS surface_q1,
+  round(quantile_cont(surface, 0.75)) AS surface_q3
 FROM ventes
 WHERE annee >= 2024 AND pieces BETWEEN 1 AND 20
   AND (code_commune LIKE '751%' OR code_commune LIKE '6938%' OR code_commune LIKE '132%')
 GROUP BY 1,2,3;
+
+CREATE OR REPLACE TABLE agg_pieces_annuel_villes AS
+SELECT
+  CASE WHEN code_commune LIKE '751%' THEN '75056'
+       WHEN code_commune LIKE '6938%' THEN '69123'
+       WHEN code_commune LIKE '132%'  THEN '13055' END AS code_commune,
+  annee, type_local, least(pieces, 5) AS pieces,
+  count(*)               AS n,
+  round(median(prix))    AS prix_median,
+  round(median(prix_m2)) AS prix_m2_median
+FROM ventes
+WHERE pieces BETWEEN 1 AND 20
+  AND (code_commune LIKE '751%' OR code_commune LIKE '6938%' OR code_commune LIKE '132%')
+GROUP BY 1,2,3,4;

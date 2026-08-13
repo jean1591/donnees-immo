@@ -173,6 +173,13 @@ Flat, long-tail oriented:
 - `/prix-immobilier-bordeaux`
 - `/prix-immobilier-bordeaux-evolution` (not "historique")
 - `/prix-immobilier-bordeaux-2025` (year as a suffix, never as a path segment)
+- `/prix-appartement-3-pieces-bordeaux` — one apartment typology in one commune.
+  T2, T3 and T4 only, and only where the cell holds 100 sales over 24 months, in
+  the 50 largest apartment markets. Houses are excluded: room count is not how a
+  house is shopped. Selection lives in `src/lib/rooms.js`.
+- `/prix-t3-par-ville` — the hub listing every commune publishing that typology.
+  Deliberately not `prix-appartement-3-pieces-par-ville`: the page above matches
+  its whole URL tail, so the two route families must not share a prefix.
 
 Slugification: lowercase, strip accents, apostrophes and spaces → hyphens
 (`L'Haÿ-les-Roses` → `l-hay-les-roses`).
@@ -203,8 +210,9 @@ codes `75056`, `69123`, `13055`.
 | `ventes`                                                      | mutations where `nature_mutation='Vente'`, `n_principaux=1`, price and area > 0 |
 | `agg_recent`                                                  | 24-month medians per commune × type, deciles D1/Q1/Q3/D9                        |
 | `agg_annuel`                                                  | 5-year series per commune × year × type                                         |
-| `agg_pieces`                                                  | per commune × type × room count (1-5+), 24 months                               |
-| `agg_recent_villes`, `agg_annuel_villes`, `agg_pieces_villes` | same, for aggregated Paris/Lyon/Marseille                                       |
+| `agg_pieces`                                                  | per commune × type × room count (1-5+), 24 months, price and area quartiles     |
+| `agg_pieces_annuel`                                          | 5-year series per commune × year × type × room count                            |
+| `agg_recent_villes`, `agg_annuel_villes`, `agg_pieces_villes`, `agg_pieces_annuel_villes` | same, for aggregated Paris/Lyon/Marseille           |
 
 ## `communes.json` format
 
@@ -239,7 +247,18 @@ codes `75056`, `69123`, `13055`.
     ],
     "rooms": {
       "apartment": [
-        { "rooms": 1, "count": 0, "medianPrice": 0, "medianArea": 0 }
+        {
+          "rooms": 1,
+          "count": 0,
+          "medianPrice": 0,
+          "priceQ1": 0,
+          "priceQ3": 0,
+          "pricePerSqm": 0,
+          "medianArea": 0,
+          "areaQ1": 0,
+          "areaQ3": 0,
+          "yearly": [{ "year": 2021, "count": 0, "medianPrice": 0, "pricePerSqm": 0 }]
+        }
       ],
       "house": []
     }

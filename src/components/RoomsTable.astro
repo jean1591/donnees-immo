@@ -11,9 +11,20 @@ import {
   roomLabel,
   TYPE_LABELS,
 } from '../lib/format.js'
+import { hasRoomPage, roomPagePath } from '../lib/rooms.js'
+import { RECENT_WINDOW } from '../lib/dataset.js'
+import RowLinks from './RowLinks.astro'
 
-const { rooms, types } = Astro.props
+// `commune` is optional: without it the table is a table. With it, the rows that
+// have a page of their own link to it — which is the only inbound link those
+// pages get, and the commune page is where a reader asking about a T3 already is.
+const { rooms, types, commune } = Astro.props
 const tables = types.filter((type) => rooms[type].length > 0)
+
+const link = (type, row) =>
+  commune && type === 'apartment' && hasRoomPage(commune, row.rooms)
+    ? roomPagePath(commune, row.rooms)
+    : null
 ---
 
 {
@@ -21,7 +32,9 @@ const tables = types.filter((type) => rooms[type].length > 0)
     <section class="my-14">
       <h2 class="text-xl font-semibold">Prix par nombre de pièces</h2>
       <p class="mt-2 text-sm text-ink-secondary">
-        Médianes sur les 24 derniers mois. Le nombre de ventes indique le poids de chaque ligne.
+        Médianes sur les ventes {RECENT_WINDOW.prose}. Le nombre de ventes indique le poids de
+        chaque ligne.
+        {commune && ' Les typologies en orange ouvrent une page détaillée : surface, fourchette de prix, évolution.'}
       </p>
 
       <div class="mt-6 space-y-8">
@@ -52,9 +65,31 @@ const tables = types.filter((type) => rooms[type].length > 0)
               </thead>
               <tbody>
                 {rooms[type].map((row) => (
-                  <tr class="border-t border-hairline">
+                  /* A linked row is signalled three ways — brand colour, an
+                     arrow, and a tint under the whole row on hover — because in
+                     a table of numbers an underlined label alone reads as
+                     emphasis rather than as somewhere to go. */
+                  <tr
+                    data-href={link(type, row) ?? undefined}
+                    class:list={[
+                      'border-t border-hairline transition-colors',
+                      link(type, row) && 'cursor-pointer hover:bg-brand-100',
+                    ]}
+                  >
                     <th scope="row" class="px-4 py-2.5 text-left font-medium">
-                      {roomLabel(row.rooms, type)}
+                      {link(type, row) ? (
+                        <a
+                          class="inline-flex items-center gap-1 font-semibold text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700 hover:decoration-brand-500"
+                          href={link(type, row)}
+                        >
+                          {roomLabel(row.rooms, type)}
+                          {/* The arrow inherits the underline: a child cannot
+                              cancel a decoration its parent draws through it. */}
+                          <span aria-hidden="true" class="text-xs">→</span>
+                        </a>
+                      ) : (
+                        roomLabel(row.rooms, type)
+                      )}
                     </th>
                     <td class="px-4 py-2.5 text-right">{formatEuro(row.medianPrice)}</td>
                     <td class="px-4 py-2.5 text-right">{formatPricePerSqm(row.pricePerSqm)}</td>
@@ -74,3 +109,7 @@ const tables = types.filter((type) => rooms[type].length > 0)
     </section>
   )
 }
+
+{/* Only where a row actually links somewhere: the commune pages outside the
+    room-count selection have no `data-href` to act on. */}
+{commune && <RowLinks />}

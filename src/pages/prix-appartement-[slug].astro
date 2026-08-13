@@ -1,0 +1,481 @@
+---
+// One typology of one commune: « prix d'un T3 à Montreuil ».
+//
+// The whole tail of the URL is a single param. Astro would happily match
+// `[rooms]-pieces-[slug]`, but commune slugs carry hyphens of their own and the
+// two params would be separated by nothing a matcher can trust. Paths come from
+// getStaticPaths, so there is no parsing to get wrong — the param is opaque.
+import Base from '../layouts/Base.astro'
+import Breadcrumb from '../components/Breadcrumb.astro'
+import PriceChart from '../components/PriceChart.astro'
+import RoomSpread from '../components/RoomSpread.astro'
+import YearlyTable from '../components/YearlyTable.astro'
+import {
+  PAGE_ROOMS,
+  ROOM_PAGE_TYPE,
+  ROOM_SERIES_MIN_SALES,
+  hasRoomPage,
+  roomCell,
+  roomEvolution,
+  roomHubPath,
+  roomPagePath,
+  roomPages,
+  roomRanking,
+  roomSeries,
+  roomShare,
+  roomSteps,
+} from '../lib/rooms.js'
+import { RECENT_WINDOW } from '../lib/dataset.js'
+import {
+  formatArea,
+  formatCount,
+  formatEuro,
+  formatPercent,
+  formatPercentMagnitude,
+  formatPricePerSqm,
+  formatPricePerSqmProse,
+  locative,
+  roomLabel,
+} from '../lib/format.js'
+
+export function getStaticPaths() {
+  return roomPages.map(({ commune, rooms, cell }) => ({
+    params: { slug: `${rooms}-pieces-${commune.slug}` },
+    props: { commune, rooms, cell },
+  }))
+}
+
+const { commune, rooms, cell } = Astro.props
+const type = ROOM_PAGE_TYPE
+
+const label = roomLabel(rooms, type)
+// « un T5 et + se vend » does not survive a sentence; the table label does not
+// have to read as prose and this one does.
+const prose = rooms >= 5 ? 'T5 ou plus' : `T${rooms}`
+const where = locative(commune.name)
+
+const series = roomSeries(cell)
+const lastTrend = roomEvolution(cell, 1)
+
+// The long change is measured across whatever the series actually spans and
+// labelled with its own starting year, rather than asked for over a fixed five.
+// The dataset covers five calendar years, which is four intervals: a span of 5
+// walks back to a year that is not there and returns nothing, every time.
+const plotted = series?.filter((entry) => entry[type]).map((entry) => entry.year) ?? []
+const fullSpan = plotted.length > 1 ? plotted.at(-1) - plotted[0] : 0
+
+const trends = [
+  { label: 'sur 1 an', value: lastTrend },
+  ...(fullSpan > 1
+    ? [{ label: `depuis ${plotted[0]}`, value: roomEvolution(cell, fullSpan) }]
+    : []),
+].filter((trend) => trend.value)
+
+const steps = roomSteps(commune, rooms)
+const ranking = roomRanking(commune, rooms)
+const share = roomShare(commune, rooms)
+
+// Below this the two medians are closer than the margin either carries, and the
+// sentence would be reporting the sample rather than the market.
+const GAP_FLOOR = 0.02
+const gap = ranking?.gapToMiddle
+
+// The commune's whole apartment market, which the typology is read against.
+const market = commune.recent[type]
+const premium = cell.pricePerSqm / market.pricePerSqm - 1
+// Below this the difference is smaller than the margin either median carries,
+// and « 0,3 % de plus » would be reporting the sample, not the market.
+const PREMIUM_FLOOR = 0.02
+
+// Every typology of the commune worth drawing beside this one — the same bar
+// the peer lists use, so a row present here is a row whose figure is published
+// somewhere on the site.
+const MIN_ROW_SALES = 50
+const spreadRows = commune.rooms[type]
+  .filter((row) => row.count >= MIN_ROW_SALES)
+  .map((row) => ({ ...row, current: row.rooms === rooms }))
+
+const siblings = PAGE_ROOMS.filter((other) => other !== rooms && hasRoomPage(commune, other))
+
+const ordinal = (rank) => (rank === 1 ? '1re' : `${rank}e`)
+
+// Same budget as the commune pages: ~60 characters for the title, ~155 for the
+// description, price dropped from the title when the name eats the room.
+const titleBase = `Prix d'un ${label} ${where} (${commune.department.code})`
+const titleWithPrice = `${titleBase} — ${formatPricePerSqm(cell.pricePerSqm)}`
+const title = titleWithPrice.length <= 60 ? titleWithPrice : titleBase
+const description = `Prix d'un appartement ${rooms} pièces (${label}) ${where} : ${formatEuro(cell.medianPrice)} de prix de vente médian, soit ${formatPricePerSqm(cell.pricePerSqm)} pour ${formatArea(cell.medianArea)}. Médiane sur ${formatCount(cell.count)} ventes (DVF).`
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: `Prix d'un ${label} ${where}`,
+  description,
+  license: 'https://www.etalab.gouv.fr/licence-ouverte-open-licence',
+  creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  temporalCoverage: series
+    ? `${series[0].year}/${series.at(-1).year}`
+    : `${commune.yearly[0].year}/${commune.yearly.at(-1).year}`,
+  spatialCoverage: { '@type': 'Place', name: commune.name },
+  isBasedOn:
+    'https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres-geolocalisees',
+  variableMeasured: [
+    {
+      '@type': 'PropertyValue',
+      name: `Prix de vente médian — appartement ${rooms} pièces`,
+      value: cell.medianPrice,
+      unitText: 'EUR',
+      measurementTechnique: `Médiane sur ${formatCount(cell.count)} ventes, 24 mois glissants`,
+    },
+    {
+      '@type': 'PropertyValue',
+      name: `Prix médian au m² — appartement ${rooms} pièces`,
+      value: cell.pricePerSqm,
+      unitText: 'EUR/m²',
+      measurementTechnique: `Médiane sur ${formatCount(cell.count)} ventes, 24 mois glissants`,
+    },
+  ],
+}
+---
+
+<Base title={title} description={description}>
+  <script
+    slot="head"
+    type="application/ld+json"
+    is:inline
+    set:html={JSON.stringify(jsonLd)}
+  />
+
+  <Breadcrumb
+    items={[
+      { label: 'Accueil', href: '/' },
+      {
+        label: commune.department.name,
+        href: `/prix-immobilier-departement-${commune.department.slug}`,
+      },
+      { label: commune.name, href: `/prix-immobilier-${commune.slug}` },
+      { label: label },
+    ]}
+  />
+
+  <h1 class="mt-5 text-3xl font-semibold sm:text-4xl">
+    Prix d'un {label} {where}
+  </h1>
+
+  <p class="mt-5 max-w-2xl text-xl leading-relaxed">
+    {where.charAt(0).toUpperCase() + where.slice(1)}, un appartement de {rooms} pièces se vend
+    <strong class="font-semibold">{formatEuro(cell.medianPrice)}</strong>, soit
+    <strong class="font-semibold">{formatPricePerSqmProse(cell.pricePerSqm)}</strong> pour
+    <strong class="font-semibold">{formatArea(cell.medianArea)}</strong>.
+  </p>
+
+  <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+    C'est le prix médian des {formatCount(cell.count)} {prose} vendus {RECENT_WINDOW.between} :
+    la moitié sont partis au-dessus de ce prix, l'autre moitié en dessous.
+    {
+      share && (
+        <>
+          {' '}Cette typologie représente{' '}
+          <strong class="font-medium text-ink">{formatPercentMagnitude(share)}</strong> des
+          appartements vendus {where}.
+        </>
+      )
+    }
+    {
+      lastTrend && (
+        <>
+          {' '}Le prix au mètre carré {' '}
+          {lastTrend.ratio >= 0 ? 'a augmenté' : 'a reculé'} de{' '}
+          <strong class="font-medium text-ink">{formatPercentMagnitude(lastTrend.ratio)}</strong>{' '}
+          entre {lastTrend.from} et {lastTrend.to}.
+        </>
+      )
+    }
+  </p>
+
+  <div class="mt-10 rounded-xl border border-hairline bg-surface p-6 shadow-[0_1px_3px_rgba(28,24,21,0.05)]">
+    <header class="flex items-baseline justify-between gap-4">
+      <h2 class="flex items-center gap-2 text-sm font-semibold">
+        <span
+          class="inline-block h-2 w-2 rounded-full"
+          style="background:var(--color-series-apartment)"
+          aria-hidden="true"></span>
+        {label} — appartement {rooms} pièces
+      </h2>
+      <span class="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-medium text-brand-700 tabular">
+        {formatCount(cell.count)} ventes
+      </span>
+    </header>
+
+    <p class="mt-4 text-4xl font-semibold tracking-tight text-brand-600">
+      {formatEuro(cell.medianPrice)}
+    </p>
+
+    <dl class="mt-4 grid grid-cols-2 gap-4 border-t border-hairline pt-4 text-sm">
+      <div>
+        <dt class="text-xs text-ink-muted">Prix au m²</dt>
+        <dd class="mt-0.5 font-medium tabular">{formatPricePerSqm(cell.pricePerSqm)}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-ink-muted">Surface médiane</dt>
+        <dd class="mt-0.5 font-medium tabular">{formatArea(cell.medianArea)}</dd>
+      </div>
+    </dl>
+
+    {
+      trends.length > 0 && (
+        <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-2 border-t border-hairline pt-4 text-sm">
+          {trends.map((trend) => (
+            <div class="flex items-baseline gap-2">
+              <dt class="text-xs text-ink-muted">{trend.label}</dt>
+              <dd
+                class="flex items-baseline gap-1 font-medium tabular"
+                style={`color:${trend.value.ratio >= 0 ? 'var(--color-up)' : 'var(--color-down)'}`}
+              >
+                <span aria-hidden="true">{trend.value.ratio >= 0 ? '↑' : '↓'}</span>
+                {formatPercent(trend.value.ratio)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+  </div>
+
+  <section class="my-14">
+    <h2 class="text-xl font-semibold">Ce que mesure un {label} {where}</h2>
+    <p class="mt-3 max-w-2xl leading-relaxed text-ink-secondary">
+      Un {prose} vendu {where} fait <strong class="font-medium text-ink">{formatArea(cell.medianArea)}</strong>,
+      et la moitié d'entre eux mesurent entre{' '}
+      <strong class="font-medium text-ink">{formatArea(cell.areaQ1)}</strong> et{' '}
+      <strong class="font-medium text-ink">{formatArea(cell.areaQ3)}</strong>. Le nombre de pièces
+      ne dit pas la surface : c'est la première raison pour laquelle deux {prose} affichés au même
+      prix ne valent pas la même chose.
+    </p>
+  </section>
+
+  <RoomSpread
+    rows={spreadRows.map((row) => ({
+      rooms: row.rooms,
+      lo: row.areaQ1,
+      mid: row.medianArea,
+      hi: row.areaQ3,
+      current: row.current,
+    }))}
+    format={formatArea}
+    type={type}
+    title="Surface par typologie"
+    note={`Surfaces des appartements vendus ${where}, ${RECENT_WINDOW.prose}.`}
+    legend="Chaque barre couvre la moitié des ventes : un quart des appartements étaient plus petits, un quart plus grands. Le trait marque la surface médiane. Toutes les barres sont à la même échelle."
+  />
+
+  <RoomSpread
+    rows={spreadRows.map((row) => ({
+      rooms: row.rooms,
+      lo: row.priceQ1,
+      mid: row.medianPrice,
+      hi: row.priceQ3,
+      current: row.current,
+    }))}
+    format={formatEuro}
+    type={type}
+    title="Fourchette de prix par typologie"
+    note={`La moitié des ${prose} sont partis entre ${formatEuro(cell.priceQ1)} et ${formatEuro(cell.priceQ3)}.`}
+    legend="Chaque barre couvre la moitié des ventes : un quart des appartements sont partis moins cher, un quart plus cher. Le trait marque le prix médian. Toutes les barres sont à la même échelle."
+  />
+
+  <p
+    class="-mt-8 mb-14 rounded-lg border border-brand-200 bg-brand-100 px-4 py-3 text-sm text-ink-secondary"
+  >
+    Les DVF ne disent rien de l'état du bien, de son étage ni de son exposition. Un prix bas dans
+    cette fourchette a presque toujours une raison — travaux à prévoir, rez-de-chaussée, vente
+    entre proches.
+  </p>
+
+  {
+    steps.length > 0 && (
+      <section class="my-14">
+        <h2 class="text-xl font-semibold">Ce que coûte une pièce de plus</h2>
+        <p class="mt-3 max-w-2xl leading-relaxed text-ink-secondary">
+          {steps.map((step) => (
+            <>
+              {/* The typology carries the link, not the amount: « 407 125 € »
+                  told a reader nothing about where it led, and told a crawler
+                  nothing about the page at the other end. */}
+              Un{' '}
+              {step.hasPage ? (
+                <a
+                  class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700"
+                  href={roomPagePath(commune, step.rooms)}
+                >
+                  {step.rooms >= 5 ? 'T5 ou plus' : `T${step.rooms}`} {where}
+                </a>
+              ) : (
+                (step.rooms >= 5 ? 'T5 ou plus' : `T${step.rooms}`)
+              )}{' '}
+              se vend{' '}
+              <strong class="font-medium text-ink">{formatEuro(step.cell.medianPrice)}</strong>, soit{' '}
+              <strong class="font-medium text-ink">{formatEuro(Math.abs(step.delta))}</strong>{' '}
+              {step.delta >= 0 ? 'de plus' : 'de moins'}.{' '}
+            </>
+          ))}
+          L'écart n'est pas le même dans les deux sens, et il ne l'est pas d'une commune à l'autre :
+          il dépend de ce que chaque marché offre réellement, pas d'une règle de proportionnalité.
+        </p>
+
+        {Math.abs(premium) >= PREMIUM_FLOOR && (
+          <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+            Au mètre carré, le {prose} se paie{' '}
+            <strong class="font-medium text-ink">{formatPricePerSqm(cell.pricePerSqm)}</strong>,
+            soit <strong class="font-medium text-ink">{formatPercentMagnitude(premium)}</strong>{' '}
+            {premium > 0 ? 'de plus' : 'de moins'} que l'ensemble des appartements {where} (
+            {formatPricePerSqm(market.pricePerSqm)}). Les petites surfaces se vendent presque
+            toujours plus cher au mètre carré que les grandes.
+          </p>
+        )}
+      </section>
+    )
+  }
+
+  {
+    series && (
+      <>
+        {/* The bars are read from the cell rather than from `series`, so a year
+            too thin to price still shows the volume it was judged on — which is
+            precisely the year a reader should see the bar for. */}
+        <PriceChart
+          yearly={series}
+          types={[type]}
+          labels={{ [type]: label }}
+          subject="typologie"
+          volume={cell.yearly.map((entry) => ({ year: entry.year, count: entry.count }))}
+        />
+        <YearlyTable
+          yearly={series}
+          types={[type]}
+          labels={{ [type]: label }}
+          minSales={ROOM_SERIES_MIN_SALES}
+          subject="typologie"
+        />
+      </>
+    )
+  }
+
+  {
+    !series && (
+      <p class="my-14 text-sm text-ink-muted">
+        Trop peu de {prose} vendus chaque année {where} pour publier une évolution : la variation
+        d'une année sur l'autre serait dominée par le hasard de l'échantillon.
+      </p>
+    )
+  }
+
+  {
+    ranking && (
+      <section class="my-14">
+        {/* Department names carry no gender or article in the dataset, so the
+            sentence avoids the preposition rather than guessing it — the same
+            reason the commune pages phrase their neighbour list this way. */}
+        <h2 class="text-xl font-semibold">Le {label} dans le reste du département</h2>
+        <p class="mt-1 text-sm text-ink-secondary">
+          Sur les {ranking.total} communes du département qui publient un prix pour cette typologie,
+          {' '}{commune.name} arrive en {ordinal(ranking.rank)} position, de la plus chère à la
+          moins chère.
+          {
+            gap !== null && Math.abs(gap) >= GAP_FLOOR && (
+              <>
+                {' '}Celle qui occupe le milieu de ce classement affiche{' '}
+                <span class="font-medium text-ink tabular">
+                  {formatPricePerSqm(ranking.middle.pricePerSqm)}
+                </span>{' '}: {commune.name} se situe{' '}
+                <span class="font-medium text-ink">{formatPercentMagnitude(gap)}</span>{' '}
+                {gap > 0 ? 'au-dessus' : 'en dessous'}.
+              </>
+            )
+          }
+        </p>
+
+        <div class="mt-5 overflow-x-auto rounded-lg border border-hairline bg-surface">
+          <table class="w-full text-sm">
+            <thead class="bg-surface-sunk text-xs text-ink-secondary">
+              <tr>
+                <th scope="col" class="px-4 py-2.5 text-left font-medium">
+                  Commune
+                </th>
+                <th scope="col" class="px-4 py-2.5 text-right font-medium">
+                  Prix de vente
+                </th>
+                <th scope="col" class="px-4 py-2.5 text-right font-medium">
+                  Prix au m²
+                </th>
+                <th scope="col" class="px-4 py-2.5 text-right font-medium">
+                  Ventes
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranking.window.map((entry) => (
+                <tr class:list={['border-t border-hairline', entry.isSelf && 'bg-brand-100']}>
+                  <th scope="row" class="px-4 py-2.5 text-left font-medium">
+                    {entry.isSelf ? (
+                      entry.commune.name
+                    ) : (
+                      <a
+                        class="underline decoration-hairline underline-offset-2 hover:text-brand-600"
+                        href={entry.href}
+                      >
+                        {entry.commune.name}
+                      </a>
+                    )}
+                  </th>
+                  <td class="px-4 py-2.5 text-right">{formatEuro(entry.cell.medianPrice)}</td>
+                  <td class="px-4 py-2.5 text-right">
+                    {formatPricePerSqm(entry.cell.pricePerSqm)}
+                  </td>
+                  <td class="px-4 py-2.5 text-right text-ink-secondary">
+                    {formatCount(entry.cell.count)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="my-14">
+    <h2 class="text-xl font-semibold">Continuer {where}</h2>
+    <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+      {
+        [
+          {
+            href: `/prix-immobilier-${commune.slug}`,
+            label: `Tous les prix ${where}, maisons comprises`,
+          },
+          ...siblings.map((other) => ({
+            href: roomPagePath(commune, other),
+            label: `Prix d'un ${roomLabel(other, type)} ${where}`,
+          })),
+          {
+            href: roomHubPath(rooms),
+            label: `Le prix d'un ${label} dans les autres villes`,
+          },
+          {
+            href: `/prix-immobilier-departement-${commune.department.slug}`,
+            label: `Tout le département ${commune.department.name} (${commune.department.code})`,
+          },
+        ].map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class="block rounded-lg border border-hairline bg-surface px-4 py-3 text-sm font-medium transition-colors hover:border-brand-300 hover:bg-brand-100"
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</Base>
