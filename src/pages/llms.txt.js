@@ -39,6 +39,7 @@ Site statique. Tous les chiffres sont dans le HTML, aucun n'est chargé en JavaS
 - Prix médian au m² et prix de vente médian, par type de bien : ${formatCount(rankedCount('apartment'))} communes publient un prix appartement, ${formatCount(rankedCount('house'))} un prix maison.
 - Séries annuelles ${DATASET.firstYear}-${DATASET.lastYear}, répartition par nombre de pièces, déciles et quartiles.
 - ${formatCount(roomPages.length)} pages de typologie (T2, T3, T4) sur les plus grands marchés d'appartements : prix et surface d'une typologie précise, écart avec la typologie voisine, série annuelle propre à cette typologie.
+- ${formatCount(departments.length)} médianes départementales et une médiane nationale, recalculées sur l'ensemble des ventes du territoire concerné — jamais moyennées depuis les médianes communales. Elles portent donc sur une base plus large que les communes publiées : les ventes des communes sous le seuil y comptent aussi.
 
 ## Adresses
 

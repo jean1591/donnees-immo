@@ -63,6 +63,65 @@ WHERE pieces BETWEEN 1 AND 20
 GROUP BY 1,2,3,4
 HAVING count(*) >= 10;
 
+-- Department and national medians, recomputed from `ventes` for the same reason
+-- the *_villes tables are: a median of the medians below would be a different,
+-- wrong number. They are also wider than the pages they sit above — every sale
+-- counts, including those of the communes too small to be published — so the
+-- page that carries them says which base each figure rests on. No sale floor:
+-- the thinnest department still records several thousand over 24 months.
+CREATE OR REPLACE TABLE agg_recent_departements AS
+SELECT
+  code_departement,
+  type_local,
+  count(*)                            AS n,
+  count(DISTINCT code_commune)        AS n_communes,
+  round(median(prix_m2))              AS prix_m2_median,
+  round(quantile_cont(prix_m2, 0.10)) AS prix_m2_d1,
+  round(quantile_cont(prix_m2, 0.25)) AS prix_m2_q1,
+  round(quantile_cont(prix_m2, 0.75)) AS prix_m2_q3,
+  round(quantile_cont(prix_m2, 0.90)) AS prix_m2_d9,
+  round(median(prix))                 AS prix_median,
+  round(median(surface))              AS surface_mediane
+FROM ventes
+WHERE annee >= 2024
+GROUP BY 1,2;
+
+CREATE OR REPLACE TABLE agg_annuel_departements AS
+SELECT code_departement, annee, type_local,
+       count(*)               AS n,
+       round(median(prix_m2)) AS prix_m2_median,
+       round(median(prix))    AS prix_median
+FROM ventes
+GROUP BY 1,2,3;
+
+-- Two rows over 24 months, ten over five years. They are what turns a local
+-- median into a statement — "18 % under the national figure", "the department
+-- fell while France rose" — which is the one thing no other page can say.
+CREATE OR REPLACE TABLE agg_recent_france AS
+SELECT
+  type_local,
+  count(*)                            AS n,
+  count(DISTINCT code_departement)    AS n_departements,
+  count(DISTINCT code_commune)        AS n_communes,
+  round(median(prix_m2))              AS prix_m2_median,
+  round(quantile_cont(prix_m2, 0.10)) AS prix_m2_d1,
+  round(quantile_cont(prix_m2, 0.25)) AS prix_m2_q1,
+  round(quantile_cont(prix_m2, 0.75)) AS prix_m2_q3,
+  round(quantile_cont(prix_m2, 0.90)) AS prix_m2_d9,
+  round(median(prix))                 AS prix_median,
+  round(median(surface))              AS surface_mediane
+FROM ventes
+WHERE annee >= 2024
+GROUP BY 1;
+
+CREATE OR REPLACE TABLE agg_annuel_france AS
+SELECT annee, type_local,
+       count(*)               AS n,
+       round(median(prix_m2)) AS prix_m2_median,
+       round(median(prix))    AS prix_median
+FROM ventes
+GROUP BY 1,2;
+
 CREATE OR REPLACE TABLE agg_recent_villes AS
 SELECT
   CASE WHEN code_commune LIKE '751%' THEN '75056'

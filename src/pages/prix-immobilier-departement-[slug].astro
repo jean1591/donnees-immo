@@ -4,12 +4,20 @@
 // `/prix-immobilier-[slug]` route would collide.
 import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
-import { departments } from '../lib/departments.js'
-import { isRankable, publishedTypes, rankByEvolution } from '../lib/communes.js'
+import PriceChart from '../components/PriceChart.astro'
+import StatTile from '../components/StatTile.astro'
+import YearlyTable from '../components/YearlyTable.astro'
+import { departmentRank, departments, gapToNational, national } from '../lib/departments.js'
+import { isRankable, publishedTypes, rankByEvolution, yearlyVolume } from '../lib/communes.js'
+import { DATASET, RECENT_WINDOW } from '../lib/dataset.js'
 import {
+  agree,
   formatCount,
+  formatEuro,
   formatPercent,
+  formatPercentMagnitude,
   formatPricePerSqm,
+  formatPricePerSqmProse,
   plural,
   TYPE_LABELS,
 } from '../lib/format.js'
@@ -32,11 +40,26 @@ const inventory = districts.length
   ? `${formatCount(communes.length)} ${plural(communes.length, 'commune')} et ${districts.length} arrondissements`
   : `${formatCount(communes.length)} ${plural(communes.length, 'commune')}`
 
+// The department's own medians, recomputed from every sale it recorded — a
+// wider base than the communes listed below, which is what makes this page
+// worth more than the sum of its rows. Types are ordered by volume: the lead
+// one carries the title, the description and the ranking sentence.
+const types = publishedTypes(department)
+const lead = types.length ? department.recent[types[0]] : null
+const leadLabel = types.length ? TYPE_LABELS[types[0]] : null
+const rank = types.length ? departmentRank(department.code, types[0]) : null
+const gap = lead ? gapToNational(lead, types[0]) : null
+const departmentSales = types.reduce((sum, type) => sum + department.recent[type].count, 0)
+
 // Department names carry no gender or article in the dataset, so every
 // generated sentence goes through « le département X » rather than guessing
 // between « en Gironde », « dans le Rhône » and « aux Hauts-de-Seine ».
-const title = `Prix immobilier — ${department.name} (${department.code}), ${inventory}`
-const description = `Prix au m² des ${inventory} du département ${department.name} (${department.code}), calculé sur les ventes enregistrées entre 2021 et 2025. Source DVF.`
+const titleBase = `Prix immobilier ${department.name} (${department.code})`
+const titleWithPrice = lead ? `${titleBase} — ${formatPricePerSqm(lead.pricePerSqm)}` : titleBase
+const title = titleWithPrice.length <= 60 ? titleWithPrice : `${titleBase}, ${inventory}`
+const description = lead
+  ? `Prix immobilier dans le département ${department.name} (${department.code}) : ${formatPricePerSqm(lead.pricePerSqm)} pour ${leadLabel.article} ${leadLabel.singular}, ${formatEuro(lead.medianPrice)} en prix de vente. Médianes sur ${formatCount(departmentSales)} ventes enregistrées (DVF).`
+  : `Prix au m² des ${inventory} du département ${department.name} (${department.code}), calculé sur les ventes enregistrées entre 2021 et 2025. Source DVF.`
 
 const cell = (commune, type) =>
   commune.recent[type].count ? formatPricePerSqm(commune.recent[type].pricePerSqm) : '—'
@@ -95,7 +118,7 @@ const trends =
 // nothing else. Prices stay out of the ItemList — they belong to each commune's
 // own Dataset markup, and repeating them here would state the same figure twice
 // with no way to keep the two in step.
-const jsonLd = {
+const itemList = {
   '@context': 'https://schema.org',
   '@type': 'ItemList',
   name: `Prix immobilier des communes du département ${department.name} (${department.code})`,
@@ -109,6 +132,31 @@ const jsonLd = {
     url: new URL(`/prix-immobilier-${commune.slug}`, Astro.site).href,
   })),
 }
+
+// The department now measures something of its own, so it carries a Dataset of
+// its own — until this release the page declared a list of links and nothing
+// else. Same shape as a commune's, with the wider base spelled out in
+// `measurementTechnique`: these medians count sales the listed communes do not.
+const dataset = lead && {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: `Prix immobilier — département ${department.name} (${department.code})`,
+  description,
+  license: DATASET.licenseUrl,
+  creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  temporalCoverage: `${DATASET.firstYear}/${DATASET.lastYear}`,
+  spatialCoverage: { '@type': 'Place', name: department.name },
+  isBasedOn: DATASET.sourceUrl,
+  variableMeasured: types.map((type) => ({
+    '@type': 'PropertyValue',
+    name: `Prix médian au m² — ${TYPE_LABELS[type].plural}`,
+    value: department.recent[type].pricePerSqm,
+    unitText: 'EUR/m²',
+    measurementTechnique: `Médiane sur ${formatCount(department.recent[type].count)} ventes du département, 24 mois glissants`,
+  })),
+}
+
+const jsonLd = [dataset, itemList].filter(Boolean)
 ---
 
 <Base title={title} description={description}>
@@ -120,17 +168,78 @@ const jsonLd = {
     Prix immobilier — {department.name} ({department.code})
   </h1>
 
-  <p class="mt-5 max-w-2xl text-lg leading-relaxed text-ink-secondary">
-    <strong class="font-semibold text-ink">{inventory}</strong> de ce département{' '}
-    {communes.length + districts.length > 1 ? 'comptent' : 'compte'} assez de ventes pour publier un
-    prix médian fiable sur les 24 derniers mois.
-  </p>
+  {
+    lead && (
+      <p class="mt-5 max-w-2xl text-xl leading-relaxed">
+        Dans le département {department.name}, {leadLabel.article} {leadLabel.singular} se vend{' '}
+        <strong class="font-semibold">{formatEuro(lead.medianPrice)}</strong>, soit
+        <strong class="font-semibold"> {formatPricePerSqmProse(lead.pricePerSqm)}</strong>.
+      </p>
+    )
+  }
+
+  {
+    lead && (
+      <p class="mt-4 max-w-2xl leading-relaxed text-ink-secondary">
+        C'est la médiane des {formatCount(lead.count)} {leadLabel.plural} vendu{agree(types[0])}s
+        {' '}{RECENT_WINDOW.between} dans l'ensemble du département.
+        {gap !== null && Math.abs(gap) >= 0.01 && (
+          <>
+            {' '}Le mètre carré y est{' '}
+            <strong class="font-medium text-ink">{formatPercentMagnitude(gap)}</strong>{' '}
+            {gap > 0 ? 'plus cher' : 'moins cher'} qu'à l'échelle du pays, où la médiane s'établit à{' '}
+            {formatPricePerSqm(national.recent[types[0]].pricePerSqm)}
+            {rank && <> — {rank.rank}<sup>e</sup> département sur {rank.total}</>}.
+          </>
+        )}
+      </p>
+    )
+  }
+
+  <div class:list={['mt-10 grid gap-4', types.length > 1 && 'md:grid-cols-2']}>
+    {types.map((type) => <StatTile commune={department} type={type} />)}
+  </div>
 
   <p class="mt-4 max-w-2xl text-sm text-ink-muted">
-    Aucun prix médian n'est publié à l'échelle du département : il faudrait le recalculer sur
-    l'ensemble des ventes, et non moyenner les médianes communales, ce qui donnerait un chiffre
-    faux.
+    {
+      lead ? (
+        <>
+          Ces médianes couvrent toutes les ventes du département, y compris celles des communes trop
+          petites pour avoir leur propre page : {formatCount(lead.communes)} communes ont vu{' '}
+          {`${leadLabel.article} ${leadLabel.singular}`} changer de mains, et {inventory}{' '}
+          {communes.length + districts.length > 1 ? 'atteignent' : 'atteint'} les 50 ventes qu'il
+          faut pour publier une médiane propre.
+        </>
+      ) : (
+        <>
+          <strong class="font-semibold text-ink">{inventory}</strong> de ce département{' '}
+          {communes.length + districts.length > 1 ? 'comptent' : 'compte'} assez de ventes pour
+          publier un prix médian fiable sur les 24 derniers mois.
+        </>
+      )
+    }
   </p>
+
+  {
+    department.yearly.length > 1 && (
+      <section class="mt-14">
+        <h2 class="text-xl font-semibold">Cinq ans de prix dans le département</h2>
+        <p class="mt-2 max-w-2xl text-sm text-ink-secondary">
+          Médiane annuelle du prix au m² sur l'ensemble des ventes du département, de{' '}
+          {DATASET.firstYear} à {DATASET.lastYear}. Les barres donnent le nombre de ventes de
+          l'année : une médiane calculée sur peu de ventes se déplace pour des raisons qui tiennent
+          à l'échantillon.
+        </p>
+        <PriceChart
+          yearly={department.yearly}
+          types={types}
+          volume={yearlyVolume(department)}
+          subject="type de bien"
+        />
+        <YearlyTable yearly={department.yearly} types={types} />
+      </section>
+    )
+  }
 
   {
     extremes && (

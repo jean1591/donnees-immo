@@ -42,6 +42,7 @@ donnees-immo/
 ├── data/
 │   ├── departements.json   # code → name + slug (provided, 101 entries)
 │   ├── homonymes.json      # arbitration for the 53 slug collisions  [TO GENERATE]
+│   ├── departements-agg.json # ETL output: department + national medians
 │   └── communes.json       # ETL output, committed to git
 ├── src/
 │   ├── pages/
@@ -213,6 +214,13 @@ codes `75056`, `69123`, `13055`.
 | `agg_pieces`                                                  | per commune × type × room count (1-5+), 24 months, price and area quartiles     |
 | `agg_pieces_annuel`                                          | 5-year series per commune × year × type × room count                            |
 | `agg_recent_villes`, `agg_annuel_villes`, `agg_pieces_villes`, `agg_pieces_annuel_villes` | same, for aggregated Paris/Lyon/Marseille           |
+| `agg_recent_departements`, `agg_annuel_departements`          | per département × type, recomputed from `ventes` — never a median of commune medians. Carries `n_communes`, the communes where that type sold, which is wider than the list of published communes |
+| `agg_recent_france`, `agg_annuel_france`                      | the same two, for the whole country — what makes "18 % under the national median" statable |
+
+The last four feed `data/departements-agg.json` (`{ national, departments }`),
+kept out of `communes.json` because the build reads that file whole for every
+page. No publication threshold applies to them: the thinnest département still
+records ~200 sales over the 24-month window.
 
 ## `communes.json` format
 

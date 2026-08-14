@@ -17,6 +17,9 @@ const DB = join(ROOT, 'etl', 'dvf.db')
 const DEPARTMENTS_FILE = join(ROOT, 'data', 'departements.json')
 const HOMONYMS_FILE = join(ROOT, 'data', 'homonymes.json')
 const OUT = join(ROOT, 'data', 'communes.json')
+// Department and national aggregates, kept out of communes.json: the build reads
+// that file whole for every page, and these are read by a handful of them.
+const AREAS_OUT = join(ROOT, 'data', 'departements-agg.json')
 
 // Publication threshold: below this the margin of error on the median exceeds
 // 10 % (see CLAUDE.md). A commune is kept on its best-selling type, but each
@@ -102,7 +105,16 @@ const query = async (sql) => {
 // The *_villes tables hold Paris/Lyon/Marseille recomputed from the sales, not
 // averaged from their arrondissements. They sit alongside the arrondissements,
 // which keep their own pages.
-const [recentRows, yearlyRows, roomRows, roomYearlyRows] = await Promise.all([
+const [
+  recentRows,
+  yearlyRows,
+  roomRows,
+  roomYearlyRows,
+  departmentRecentRows,
+  departmentYearlyRows,
+  nationalRecentRows,
+  nationalYearlyRows,
+] = await Promise.all([
   query(`SELECT code_commune, nom_commune, code_departement, type_local, n,
                 prix_m2_median, prix_m2_d1, prix_m2_q1, prix_m2_q3, prix_m2_d9,
                 prix_median, surface_mediane
@@ -129,6 +141,16 @@ const [recentRows, yearlyRows, roomRows, roomYearlyRows] = await Promise.all([
          UNION ALL
          SELECT code_commune, annee, type_local, pieces, n, prix_median, prix_m2_median
          FROM agg_pieces_annuel_villes`),
+  query(`SELECT code_departement, type_local, n, n_communes, prix_m2_median, prix_m2_d1,
+                prix_m2_q1, prix_m2_q3, prix_m2_d9, prix_median, surface_mediane
+         FROM agg_recent_departements`),
+  query(`SELECT code_departement, annee, type_local, n, prix_m2_median, prix_median
+         FROM agg_annuel_departements`),
+  query(`SELECT type_local, n, n_communes, prix_m2_median, prix_m2_d1, prix_m2_q1,
+                prix_m2_q3, prix_m2_d9, prix_median, surface_mediane
+         FROM agg_recent_france`),
+  query(`SELECT annee, type_local, n, prix_m2_median, prix_median
+         FROM agg_annuel_france`),
 ])
 
 connection.closeSync()
@@ -351,10 +373,66 @@ const communes = selected.map((commune) => ({
   rooms: buildRooms(roomsByCommune.get(commune.code), roomYearlyByCommune.get(commune.code)),
 }))
 
+// --- department and national aggregates --------------------------------------
+
+// No publication threshold applies here: the thinnest department records 193
+// sales over the window, an order of magnitude above the 50 a commune needs.
+// `communes` is how many communes recorded a sale of that type — the base the
+// median rests on, always wider than the list of communes the site publishes,
+// and the number the page quotes when it says what the figure covers.
+const buildAreaRecent = (rows = []) => {
+  const out = { apartment: {}, house: {} }
+  for (const row of rows) {
+    out[TYPES[row.type_local]] = {
+      count: num(row.n),
+      communes: num(row.n_communes),
+      pricePerSqm: num(row.prix_m2_median),
+      medianPrice: num(row.prix_median),
+      medianArea: num(row.surface_mediane),
+      d1: num(row.prix_m2_d1),
+      q1: num(row.prix_m2_q1),
+      q3: num(row.prix_m2_q3),
+      d9: num(row.prix_m2_d9),
+    }
+  }
+  return out
+}
+
+const departmentYearlyByCode = groupBy(departmentYearlyRows, (r) => r.code_departement)
+const departmentAggregates = {}
+
+for (const [code, rows] of [...groupBy(departmentRecentRows, (r) => r.code_departement)].sort(
+  ([a], [b]) => a.localeCompare(b)
+)) {
+  if (!departments[code]) {
+    unknownDepartments.add(code)
+    continue
+  }
+  departmentAggregates[code] = {
+    recent: buildAreaRecent(rows),
+    yearly: buildYearly(departmentYearlyByCode.get(code)),
+  }
+}
+
+for (const [code, department] of Object.entries(departments)) {
+  if (!department.absent_dvf && !departmentAggregates[code]) {
+    warnings.push(`department ${code} (${department.nom}) has no aggregate row in the database`)
+  }
+}
+
+const areas = {
+  national: {
+    recent: buildAreaRecent(nationalRecentRows),
+    yearly: buildYearly(nationalYearlyRows),
+  },
+  departments: departmentAggregates,
+}
+
 // --- write -------------------------------------------------------------------
 
 writeJsonIfChanged(HOMONYMS_FILE, homonyms, 2)
 writeFileSync(OUT, JSON.stringify(communes))
+writeFileSync(AREAS_OUT, JSON.stringify(areas))
 
 function writeJsonIfChanged(path, value, indent) {
   const next = JSON.stringify(value, null, indent) + '\n'
@@ -382,6 +460,13 @@ console.log(`  with an apartment median : ${withApartment}`)
 console.log(`  with a house median      : ${withHouse}`)
 console.log(`  room-count cells carrying a series : ${roomCellsWithSeries} of ${roomCells}`)
 console.log(`  size : ${(bytes / 1024 / 1024).toFixed(2)} MB (${bytes.toLocaleString('en-US')} bytes)`)
+
+const national = areas.national.recent
+console.log(`\ndata/departements-agg.json`)
+console.log(`  departments : ${Object.keys(departmentAggregates).length}`)
+console.log(`  national median : ${national.apartment.pricePerSqm} EUR/m2 apartment, ${national.house.pricePerSqm} EUR/m2 house`)
+console.log(`  national base   : ${(national.apartment.count + national.house.count).toLocaleString('en-US')} sales over 24 months`)
+console.log(`  size : ${(statSync(AREAS_OUT).size / 1024).toFixed(0)} KB`)
 
 console.log(`\ndata/homonymes.json`)
 console.log(`  colliding slugs : ${Object.keys(homonyms).length}`)
