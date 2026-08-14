@@ -6,6 +6,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "verify": "node scripts/verify.mjs",
     "export": "node etl/export.mjs",
     "og": "node scripts/og-card.mjs",
     "favicon": "node scripts/favicon.mjs",

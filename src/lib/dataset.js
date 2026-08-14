@@ -15,6 +15,38 @@ export const DATASET = {
 }
 
 /**
+ * The site as an entity, distinct from DGFiP: DGFiP produced the transactions,
+ * donnees-immo.fr computes and publishes the medians. Both belong in the
+ * markup — `creator` for the source, `publisher` for whoever stands behind the
+ * figure — and conflating them would credit the administration with numbers it
+ * never published.
+ *
+ * No `sameAs`: the site has no profile anywhere to point at. The property
+ * exists to tie an entity to its known accounts, and inventing one would state
+ * something false to satisfy a checklist.
+ */
+export const publisher = (site) => ({
+  '@type': 'Organization',
+  name: DATASET.siteName,
+  url: new URL('/', site).href,
+  logo: new URL('/favicon.svg', site).href,
+})
+
+/**
+ * A named place, with coordinates when the export carries them — the median
+ * location of the area's own sales, four decimals. Two communes out of 3 630
+ * have none: DVF geolocates neither, and a Place without `geo` is still valid
+ * markup, where invented coordinates would not be.
+ */
+export const place = (name, geo) => ({
+  '@type': 'Place',
+  name,
+  ...(geo
+    ? { geo: { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lon } }
+    : {}),
+})
+
+/**
  * The 24-month headline window, named rather than described.
  *
  * « ces deux dernières années » is true on the day the dataset ships and drifts

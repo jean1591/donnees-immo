@@ -26,7 +26,7 @@ import {
   partitive,
   TYPE_LABELS,
 } from '../lib/format.js'
-import { RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 
 export function getStaticPaths() {
   return allCommunes.map((commune) => ({ params: { slug: commune.slug }, props: { commune } }))
@@ -89,12 +89,16 @@ const jsonLd = {
   '@type': 'Dataset',
   name: `Prix immobilier ${where}`,
   description,
-  license: 'https://www.etalab.gouv.fr/licence-ouverte-open-licence',
+  license: DATASET.licenseUrl,
   creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  publisher: publisher(Astro.site),
+  // The release date, not the build date: the figures change when the DVF
+  // vintage does, twice a year, and a date that moved on every deploy would
+  // claim a freshness the data does not have.
+  dateModified: DATASET.releaseDate,
   temporalCoverage: `${commune.yearly[0].year}/${lastYear}`,
-  spatialCoverage: { '@type': 'Place', name: commune.name },
-  isBasedOn:
-    'https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres-geolocalisees',
+  spatialCoverage: place(commune.name, commune.geo),
+  isBasedOn: DATASET.sourceUrl,
   variableMeasured: types.map((type) => ({
     '@type': 'PropertyValue',
     name: `Prix médian au m² — ${TYPE_LABELS[type].plural}`,

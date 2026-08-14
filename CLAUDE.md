@@ -52,7 +52,8 @@ donnees-immo/
 ├── scripts/
 │   ├── og-card.mjs         # renders public/og.png via headless Chrome
 │   ├── favicon.mjs         # renders public/favicon.ico from favicon.svg
-│   └── indexnow.mjs        # pings IndexNow with the built sitemap
+│   ├── indexnow.mjs        # pings IndexNow with the built sitemap
+│   └── verify.mjs          # blocking checks over dist/ (`npm run verify`)
 └── public/{robots.txt,og.png,favicon.*,_headers,_redirects}
 ```
 
@@ -63,7 +64,7 @@ database. The ETL only runs twice a year, locally.
 so it is regenerated in the same pass. The twice-yearly ritual is:
 
 ```
-npm run export && npm run og && npm run build
+npm run export && npm run og && npm run build && npm run verify
 git commit && git push          # Cloudflare builds and deploys from main
 npm run indexnow                # after the deploy, never before
 ```
@@ -214,10 +215,12 @@ codes `75056`, `69123`, `13055`.
 | `agg_pieces`                                                  | per commune × type × room count (1-5+), 24 months, price and area quartiles     |
 | `agg_pieces_annuel`                                          | 5-year series per commune × year × type × room count                            |
 | `agg_recent_villes`, `agg_annuel_villes`, `agg_pieces_villes`, `agg_pieces_annuel_villes` | same, for aggregated Paris/Lyon/Marseille           |
+| `agg_coords`, `agg_coords_villes`, `agg_coords_departements` | median location of an area's own sales, one point per mutation, 4 decimals (~11 m). Feeds `geo` in the `Place` of the Dataset markup. Two communes have none — DVF geolocates neither |
 | `agg_recent_departements`, `agg_annuel_departements`          | per département × type, recomputed from `ventes` — never a median of commune medians. Carries `n_communes`, the communes where that type sold, which is wider than the list of published communes |
 | `agg_recent_france`, `agg_annuel_france`                      | the same two, for the whole country — what makes "18 % under the national median" statable |
 
-The last four feed `data/departements-agg.json` (`{ national, departments }`),
+The `*_departements` and `*_france` tables feed `data/departements-agg.json`
+(`{ national, departments }`, each department carrying `recent`, `yearly`, `geo`),
 kept out of `communes.json` because the build reads that file whole for every
 page. No publication threshold applies to them: the thinnest département still
 records ~200 sales over the 24-month window.
@@ -232,6 +235,7 @@ records ~200 sales over the 24-month window.
     "code": "33063",
     "name": "Bordeaux",
     "slug": "bordeaux",
+    "geo": { "lat": 44.842, "lon": -0.5737 },
     "department": { "code": "33", "name": "Gironde", "slug": "gironde" },
     "recent": {
       "apartment": {

@@ -114,6 +114,8 @@ const [
   departmentYearlyRows,
   nationalRecentRows,
   nationalYearlyRows,
+  coordRows,
+  departmentCoordRows,
 ] = await Promise.all([
   query(`SELECT code_commune, nom_commune, code_departement, type_local, n,
                 prix_m2_median, prix_m2_d1, prix_m2_q1, prix_m2_q3, prix_m2_d9,
@@ -151,6 +153,10 @@ const [
          FROM agg_recent_france`),
   query(`SELECT annee, type_local, n, prix_m2_median, prix_median
          FROM agg_annuel_france`),
+  query(`SELECT code_commune, latitude, longitude FROM agg_coords
+         UNION ALL
+         SELECT code_commune, latitude, longitude FROM agg_coords_villes`),
+  query(`SELECT code_departement, latitude, longitude FROM agg_coords_departements`),
 ])
 
 connection.closeSync()
@@ -362,12 +368,21 @@ const buildRooms = (rows = [], yearlyRows = []) => {
   return out
 }
 
+// Median location of the commune's own sales, four decimals. It feeds the
+// `geo` of the Dataset markup, where a Place with a name and no coordinates is
+// half a statement. An aggregate over at least 50 sales, so it points at a
+// market, never at a property.
+const coordsByCommune = new Map(
+  coordRows.map((row) => [row.code_commune, { lat: num(row.latitude), lon: num(row.longitude) }])
+)
+
 const communes = selected.map((commune) => ({
   code: commune.code,
   name: commune.name,
   slug: commune.slug,
   kind: commune.kind,
   department: commune.department,
+  ...(coordsByCommune.has(commune.code) ? { geo: coordsByCommune.get(commune.code) } : {}),
   recent: buildRecent(commune.rows),
   yearly: buildYearly(yearlyByCommune.get(commune.code)),
   rooms: buildRooms(roomsByCommune.get(commune.code), roomYearlyByCommune.get(commune.code)),
@@ -408,9 +423,11 @@ for (const [code, rows] of [...groupBy(departmentRecentRows, (r) => r.code_depar
     unknownDepartments.add(code)
     continue
   }
+  const coords = departmentCoordRows.find((row) => row.code_departement === code)
   departmentAggregates[code] = {
     recent: buildAreaRecent(rows),
     yearly: buildYearly(departmentYearlyByCode.get(code)),
+    ...(coords ? { geo: { lat: num(coords.latitude), lon: num(coords.longitude) } } : {}),
   }
 }
 
@@ -459,6 +476,7 @@ console.log(`    aggregated cities  : ${count('city')}`)
 console.log(`  with an apartment median : ${withApartment}`)
 console.log(`  with a house median      : ${withHouse}`)
 console.log(`  room-count cells carrying a series : ${roomCellsWithSeries} of ${roomCells}`)
+console.log(`  with coordinates : ${communes.filter((c) => c.geo).length}`)
 console.log(`  size : ${(bytes / 1024 / 1024).toFixed(2)} MB (${bytes.toLocaleString('en-US')} bytes)`)
 
 const national = areas.national.recent

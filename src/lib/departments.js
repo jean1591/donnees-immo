@@ -38,6 +38,7 @@ export const departments = [
     // tiles, the chart and `evolution()` read it without a second code path.
     recent: areas.departments[entry.code]?.recent ?? { apartment: {}, house: {} },
     yearly: areas.departments[entry.code]?.yearly ?? [],
+    geo: areas.departments[entry.code]?.geo ?? null,
     communes: entry.communes.sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     districts: entry.districts.sort((a, b) => a.code.localeCompare(b.code)),
     // Sales behind the department's published medians, over 24 months. Summing

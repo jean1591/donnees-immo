@@ -9,7 +9,7 @@ import StatTile from '../components/StatTile.astro'
 import YearlyTable from '../components/YearlyTable.astro'
 import { departmentRank, departments, gapToNational, national } from '../lib/departments.js'
 import { isRankable, publishedTypes, rankByEvolution, yearlyVolume } from '../lib/communes.js'
-import { DATASET, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import {
   agree,
   formatCount,
@@ -144,8 +144,10 @@ const dataset = lead && {
   description,
   license: DATASET.licenseUrl,
   creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  publisher: publisher(Astro.site),
+  dateModified: DATASET.releaseDate,
   temporalCoverage: `${DATASET.firstYear}/${DATASET.lastYear}`,
-  spatialCoverage: { '@type': 'Place', name: department.name },
+  spatialCoverage: place(department.name, department.geo),
   isBasedOn: DATASET.sourceUrl,
   variableMeasured: types.map((type) => ({
     '@type': 'PropertyValue',

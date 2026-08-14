@@ -13,7 +13,7 @@ import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 import RowLinks from '../components/RowLinks.astro'
 import { ROOM_PAGE_TYPE, roomHubPath, roomHubs, roomLeaderboard } from '../lib/rooms.js'
-import { DATASET, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import {
   formatArea,
   formatCount,
@@ -58,6 +58,8 @@ const jsonLd = {
   description,
   license: DATASET.licenseUrl,
   creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  publisher: publisher(Astro.site),
+  dateModified: DATASET.releaseDate,
   temporalCoverage: `${RECENT_WINDOW.firstYear}/${RECENT_WINDOW.lastYear}`,
   spatialCoverage: { '@type': 'Country', name: 'France' },
   isBasedOn: DATASET.sourceUrl,

@@ -25,7 +25,7 @@ import {
   roomShare,
   roomSteps,
 } from '../lib/rooms.js'
-import { RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import {
   formatArea,
   formatCount,
@@ -111,14 +111,15 @@ const jsonLd = {
   '@type': 'Dataset',
   name: `Prix d'un ${label} ${where}`,
   description,
-  license: 'https://www.etalab.gouv.fr/licence-ouverte-open-licence',
+  license: DATASET.licenseUrl,
   creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  publisher: publisher(Astro.site),
+  dateModified: DATASET.releaseDate,
   temporalCoverage: series
     ? `${series[0].year}/${series.at(-1).year}`
     : `${commune.yearly[0].year}/${commune.yearly.at(-1).year}`,
-  spatialCoverage: { '@type': 'Place', name: commune.name },
-  isBasedOn:
-    'https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres-geolocalisees',
+  spatialCoverage: place(commune.name, commune.geo),
+  isBasedOn: DATASET.sourceUrl,
   variableMeasured: [
     {
       '@type': 'PropertyValue',

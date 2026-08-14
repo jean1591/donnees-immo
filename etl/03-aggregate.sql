@@ -63,6 +63,70 @@ WHERE pieces BETWEEN 1 AND 20
 GROUP BY 1,2,3,4
 HAVING count(*) >= 10;
 
+-- Where a commune is, taken from the sales themselves: DVF geolocates every
+-- line, so the median of a commune's own sale coordinates lands inside its
+-- built-up area — closer to what a reader means by "the commune" than a
+-- geometric centroid, which in a large rural commune sits in a field.
+--
+-- Two rules hold it in place. One point per mutation, per the deduplication
+-- rule, so a sale split across four parcels does not pull the median four
+-- times. And four decimals, about 11 metres: an aggregate over dozens of sales
+-- carries no address, and publishing more precision than the figure deserves
+-- would only invite the reader to read a location into it.
+CREATE OR REPLACE TABLE agg_coords AS
+WITH points AS (
+  SELECT id_mutation,
+         any_value(code_commune) AS code_commune,
+         median(latitude)        AS latitude,
+         median(longitude)       AS longitude
+  FROM dvf
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+  GROUP BY id_mutation
+)
+SELECT code_commune,
+       count(*)                   AS n,
+       round(median(latitude), 4) AS latitude,
+       round(median(longitude), 4) AS longitude
+FROM points
+GROUP BY 1;
+
+CREATE OR REPLACE TABLE agg_coords_villes AS
+WITH points AS (
+  SELECT id_mutation,
+         CASE WHEN any_value(code_commune) LIKE '751%'  THEN '75056'
+              WHEN any_value(code_commune) LIKE '6938%' THEN '69123'
+              WHEN any_value(code_commune) LIKE '132%'  THEN '13055' END AS code_commune,
+         median(latitude)  AS latitude,
+         median(longitude) AS longitude
+  FROM dvf
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+    AND (code_commune LIKE '751%' OR code_commune LIKE '6938%' OR code_commune LIKE '132%')
+  GROUP BY id_mutation
+)
+SELECT code_commune,
+       count(*)                   AS n,
+       round(median(latitude), 4) AS latitude,
+       round(median(longitude), 4) AS longitude
+FROM points
+GROUP BY 1;
+
+CREATE OR REPLACE TABLE agg_coords_departements AS
+WITH points AS (
+  SELECT id_mutation,
+         any_value(code_departement) AS code_departement,
+         median(latitude)            AS latitude,
+         median(longitude)           AS longitude
+  FROM dvf
+  WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+  GROUP BY id_mutation
+)
+SELECT code_departement,
+       count(*)                   AS n,
+       round(median(latitude), 4) AS latitude,
+       round(median(longitude), 4) AS longitude
+FROM points
+GROUP BY 1;
+
 -- Department and national medians, recomputed from `ventes` for the same reason
 -- the *_villes tables are: a median of the medians below would be a different,
 -- wrong number. They are also wider than the pages they sit above — every sale

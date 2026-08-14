@@ -11,7 +11,7 @@ import {
   formatPricePerSqm,
   roomLabel,
 } from '../lib/format.js'
-import { DATASET } from '../lib/dataset.js'
+import { DATASET, publisher } from '../lib/dataset.js'
 
 const regions = groupByRegion(departments)
 
@@ -80,6 +80,7 @@ const jsonLd = {
   description,
   license: DATASET.licenseUrl,
   isBasedOn: DATASET.sourceUrl,
+  publisher: publisher(Astro.site),
 }
 ---
 
