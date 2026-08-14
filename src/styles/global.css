@@ -17,7 +17,11 @@
   /* Ink */
   --color-ink: #1c1815;
   --color-ink-secondary: #5a5249;
-  --color-ink-muted: #8b8175;
+  /* 4.75:1 on the plane, 4.95:1 on the surface. The lighter #8b8175 it replaces
+     sat at 3.52:1, which reads fine for most people and fails WCAG AA below
+     18px — and this token carries the breadcrumb, the captions and the tile
+     labels, all of which are 12 or 14px. */
+  --color-ink-muted: #756c60;
 
   /* Rules */
   --color-hairline: #e8e0d2;

@@ -72,7 +72,10 @@ const ogImage = new URL(`/og.png?v=${DATASET.releaseDate}`, Astro.site).href
     <header class="border-b border-hairline">
       <div class="mx-auto flex max-w-4xl items-baseline justify-between gap-4 px-4 py-5">
         <a href="/" class="text-base font-semibold tracking-tight hover:text-brand-600">
-          donnees-immo<span class="text-brand-500">.fr</span>
+          {/* brand-600 rather than brand-500: as a letter the lighter step is
+              at 3.37:1 against the cream. It stays brand-500 everywhere it is
+              a fill — bars, dots, chips — where no contrast floor applies. */}
+          donnees-immo<span class="text-brand-600">.fr</span>
         </a>
         <span class="text-xs text-ink-muted">Prix réels issus des ventes enregistrées</span>
       </div>
