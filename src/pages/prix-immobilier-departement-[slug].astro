@@ -7,9 +7,11 @@ import Breadcrumb from '../components/Breadcrumb.astro'
 import PriceChart from '../components/PriceChart.astro'
 import StatTile from '../components/StatTile.astro'
 import YearlyTable from '../components/YearlyTable.astro'
+import Faq from '../components/Faq.astro'
 import { departmentRank, departments, gapToNational, national } from '../lib/departments.js'
 import { isRankable, publishedTypes, rankByEvolution, yearlyVolume } from '../lib/communes.js'
 import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { buildDepartmentFaq } from '../lib/faq.js'
 import {
   agree,
   formatCount,
@@ -158,7 +160,22 @@ const dataset = lead && {
   })),
 }
 
-const jsonLd = [dataset, itemList].filter(Boolean)
+// The rankings and the national gap are passed in rather than recomputed: the
+// page already holds them, and a second computation could answer a question
+// with a figure the blocks above contradict.
+const faq = buildDepartmentFaq(department, { extremes, rank })
+
+const faqLd = faq.length && {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faq.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: { '@type': 'Answer', text: item.answer },
+  })),
+}
+
+const jsonLd = [dataset, itemList, faqLd].filter(Boolean)
 ---
 
 <Base title={title} description={description}>
@@ -424,8 +441,12 @@ const jsonLd = [dataset, itemList].filter(Boolean)
     </table>
   </div>
 
-  <p class="mt-2 mb-14 text-xs text-ink-muted">
+  <p class="mt-2 text-xs text-ink-muted">
     « — » signale un type de bien comptant moins de 50 ventes sur 24 mois, trop peu pour publier
     une médiane.
   </p>
+
+  <div class="mb-14">
+    <Faq items={faq} />
+  </div>
 </Base>

@@ -6,6 +6,7 @@
 // two params would be separated by nothing a matcher can trust. Paths come from
 // getStaticPaths, so there is no parsing to get wrong — the param is opaque.
 import Base from '../layouts/Base.astro'
+import Faq from '../components/Faq.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 import PriceChart from '../components/PriceChart.astro'
 import RoomSpread from '../components/RoomSpread.astro'
@@ -22,10 +23,12 @@ import {
   roomPages,
   roomRanking,
   roomSeries,
+  roomBenchmark,
   roomShare,
   roomSteps,
 } from '../lib/rooms.js'
 import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { buildTypologyFaq } from '../lib/faq.js'
 import {
   formatArea,
   formatCount,
@@ -97,6 +100,58 @@ const spreadRows = commune.rooms[type]
 
 const siblings = PAGE_ROOMS.filter((other) => other !== rooms && hasRoomPage(commune, other))
 
+// --- what makes this page's prose its own -----------------------------------
+//
+// Half the words on a page like this are the same words on 148 others, and the
+// figures alone do not fix that: a number sits inside a sentence that never
+// changes. These three branches pick a different sentence depending on what the
+// data says, which is the only thing that moves a shingle-based similarity — and
+// each of them tells the reader something the numbers do not say by themselves.
+
+/** Is this the typology the commune actually trades? */
+const busiest = spreadRows.reduce(
+  (best, row) => (!best || row.count > best.count ? row : best),
+  null
+)
+const isBusiest = busiest?.rooms === rooms
+
+// How this typology's floor area compares with the same typology elsewhere. The
+// benchmark is the middle of the communes that publish it, not a national
+// median, and 4 % is where the gap exceeds the rounding on either side.
+const AREA_FLOOR = 0.04
+const benchmark = roomBenchmark(rooms)
+const areaGap = benchmark ? cell.medianArea / benchmark.medianArea - 1 : null
+const areaVerdict =
+  areaGap === null || Math.abs(areaGap) < AREA_FLOOR
+    ? 'typical'
+    : areaGap > 0
+      ? 'larger'
+      : 'smaller'
+
+// Which side of the typology costs more to cross.
+//
+// Gated on a real gap: the two steps differing by a few percent is the sample
+// talking, and « le haut de la gamme se paie ici » drawn from 73 649 € against
+// 70 682 € is a conclusion about noise that would flip with the next release.
+// At 1.2 the claim survives the margin either median carries, and it fires on
+// the communes where the asymmetry is actually visible rather than on all of
+// them.
+const ASYMMETRY = 1.2
+const stepDown = steps.find((step) => step.rooms < rooms)
+const stepUp = steps.find((step) => step.rooms > rooms)
+const asymmetry =
+  stepDown && stepUp
+    ? (() => {
+        const down = Math.abs(stepDown.delta)
+        const up = Math.abs(stepUp.delta)
+        if (up >= down * ASYMMETRY) return 'up'
+        if (down >= up * ASYMMETRY) return 'down'
+        return null
+      })()
+    : null
+
+const stepLabel = (step) => (step.rooms >= 5 ? 'T5 ou plus' : `T${step.rooms}`)
+
 const ordinal = (rank) => (rank === 1 ? '1re' : `${rank}e`)
 
 // Same budget as the commune pages: ~60 characters for the title, ~155 for the
@@ -105,6 +160,19 @@ const titleBase = `Prix d'un ${label} ${where} (${commune.department.code})`
 const titleWithPrice = `${titleBase} — ${formatPricePerSqm(cell.pricePerSqm)}`
 const title = titleWithPrice.length <= 60 ? titleWithPrice : titleBase
 const description = `Prix d'un appartement ${rooms} pièces (${label}) ${where} : ${formatEuro(cell.medianPrice)} de prix de vente médian, soit ${formatPricePerSqm(cell.pricePerSqm)} pour ${formatArea(cell.medianArea)}. Médiane sur ${formatCount(cell.count)} ventes (DVF).`
+
+// Same figures as the blocks above, passed in rather than recomputed.
+const faq = buildTypologyFaq({ commune, prose, cell, trend: lastTrend })
+
+const faqLd = faq.length && {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faq.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: { '@type': 'Answer', text: item.answer },
+  })),
+}
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -144,7 +212,7 @@ const jsonLd = {
     slot="head"
     type="application/ld+json"
     is:inline
-    set:html={JSON.stringify(jsonLd)}
+    set:html={JSON.stringify([jsonLd, faqLd].filter(Boolean))}
   />
 
   <Breadcrumb
@@ -174,13 +242,20 @@ const jsonLd = {
     C'est le prix médian des {formatCount(cell.count)} {prose} vendus {RECENT_WINDOW.between} :
     la moitié sont partis au-dessus de ce prix, l'autre moitié en dessous.
     {
-      share && (
-        <>
-          {' '}Cette typologie représente{' '}
-          <strong class="font-medium text-ink">{formatPercentMagnitude(share)}</strong> des
-          appartements vendus {where}.
-        </>
-      )
+      share &&
+        (isBusiest ? (
+          <>
+            {' '}C'est la typologie la plus échangée {where}, avec{' '}
+            <strong class="font-medium text-ink">{formatPercentMagnitude(share)}</strong> des
+            appartements qui changent de mains.
+          </>
+        ) : (
+          <>
+            {' '}Cette typologie pèse{' '}
+            <strong class="font-medium text-ink">{formatPercentMagnitude(share)}</strong> du marché
+            de l'appartement {where}, derrière le {roomLabel(busiest.rooms, type)}.
+          </>
+        ))
     }
     {
       lastTrend && (
@@ -249,9 +324,36 @@ const jsonLd = {
       Un {prose} vendu {where} fait <strong class="font-medium text-ink">{formatArea(cell.medianArea)}</strong>,
       et la moitié d'entre eux mesurent entre{' '}
       <strong class="font-medium text-ink">{formatArea(cell.areaQ1)}</strong> et{' '}
-      <strong class="font-medium text-ink">{formatArea(cell.areaQ3)}</strong>. Le nombre de pièces
-      ne dit pas la surface : c'est la première raison pour laquelle deux {prose} affichés au même
-      prix ne valent pas la même chose.
+      <strong class="font-medium text-ink">{formatArea(cell.areaQ3)}</strong>.
+      {
+        benchmark && areaVerdict === 'larger' && (
+          <>
+            {' '}C'est plus grand que la moyenne du genre : sur les {benchmark.communes} villes qui
+            publient un {prose}, celle du milieu s'établit à{' '}
+            <strong class="font-medium text-ink">{formatArea(benchmark.medianArea)}</strong>. À
+            nombre de pièces égal, on achète ici plus de mètres carrés qu'ailleurs.
+          </>
+        )
+      }
+      {
+        benchmark && areaVerdict === 'smaller' && (
+          <>
+            {' '}C'est plus petit que la moyenne du genre : sur les {benchmark.communes} villes qui
+            publient un {prose}, celle du milieu s'établit à{' '}
+            <strong class="font-medium text-ink">{formatArea(benchmark.medianArea)}</strong>. Une
+            part du prix au mètre carré s'explique par là.
+          </>
+        )
+      }
+      {
+        benchmark && areaVerdict === 'typical' && (
+          <>
+            {' '}C'est la surface courante pour cette typologie : sur les {benchmark.communes} villes
+            qui la publient, celle du milieu s'établit à{' '}
+            <strong class="font-medium text-ink">{formatArea(benchmark.medianArea)}</strong>.
+          </>
+        )
+      }
     </p>
   </section>
 
@@ -267,7 +369,7 @@ const jsonLd = {
     type={type}
     title="Surface par typologie"
     note={`Surfaces des appartements vendus ${where}, ${RECENT_WINDOW.prose}.`}
-    legend="Chaque barre couvre la moitié des ventes : un quart des appartements étaient plus petits, un quart plus grands. Le trait marque la surface médiane. Toutes les barres sont à la même échelle."
+    legend={`Chaque barre couvre la moitié des ventes, un quart de part et d'autre ; le trait est la médiane. Celle du ${prose} va de ${formatArea(cell.areaQ1)} à ${formatArea(cell.areaQ3)}.`}
   />
 
   <RoomSpread
@@ -281,8 +383,8 @@ const jsonLd = {
     format={formatEuro}
     type={type}
     title="Fourchette de prix par typologie"
-    note={`La moitié des ${prose} sont partis entre ${formatEuro(cell.priceQ1)} et ${formatEuro(cell.priceQ3)}.`}
-    legend="Chaque barre couvre la moitié des ventes : un quart des appartements sont partis moins cher, un quart plus cher. Le trait marque le prix médian. Toutes les barres sont à la même échelle."
+    note={`Le ${prose} face aux autres typologies vendues ${where}.`}
+    legend={`Chaque barre couvre la moitié des ventes, un quart de part et d'autre ; le trait est la médiane. Celle du ${prose} va de ${formatEuro(cell.priceQ1)} à ${formatEuro(cell.priceQ3)}.`}
   />
 
   <p
@@ -297,31 +399,63 @@ const jsonLd = {
     steps.length > 0 && (
       <section class="my-14">
         <h2 class="text-xl font-semibold">Ce que coûte une pièce de plus</h2>
+        {/* Each sentence says what a move costs or saves, in that order, rather
+            than stating a neighbour's price and leaving the reader to subtract.
+            The typology carries the link, not the amount: « 407 125 € » told a
+            reader nothing about where it led. */}
         <p class="mt-3 max-w-2xl leading-relaxed text-ink-secondary">
-          {steps.map((step) => (
-            <>
-              {/* The typology carries the link, not the amount: « 407 125 € »
-                  told a reader nothing about where it led, and told a crawler
-                  nothing about the page at the other end. */}
-              Un{' '}
-              {step.hasPage ? (
-                <a
-                  class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700"
-                  href={roomPagePath(commune, step.rooms)}
-                >
-                  {step.rooms >= 5 ? 'T5 ou plus' : `T${step.rooms}`} {where}
-                </a>
-              ) : (
-                (step.rooms >= 5 ? 'T5 ou plus' : `T${step.rooms}`)
-              )}{' '}
-              se vend{' '}
-              <strong class="font-medium text-ink">{formatEuro(step.cell.medianPrice)}</strong>, soit{' '}
-              <strong class="font-medium text-ink">{formatEuro(Math.abs(step.delta))}</strong>{' '}
-              {step.delta >= 0 ? 'de plus' : 'de moins'}.{' '}
-            </>
-          ))}
-          L'écart n'est pas le même dans les deux sens, et il ne l'est pas d'une commune à l'autre :
-          il dépend de ce que chaque marché offre réellement, pas d'une règle de proportionnalité.
+          {
+            stepUp && (
+              <>
+                Passer du {prose} au{' '}
+                {stepUp.hasPage ? (
+                  <a
+                    class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700"
+                    href={roomPagePath(commune, stepUp.rooms)}
+                  >
+                    {stepLabel(stepUp)} {where}
+                  </a>
+                ) : (
+                  `${stepLabel(stepUp)} ${where}`
+                )}{' '}
+                coûte{' '}
+                <strong class="font-medium text-ink">{formatEuro(Math.abs(stepUp.delta))}</strong>{' '}
+                de plus, soit{' '}
+                <strong class="font-medium text-ink">
+                  {formatEuro(stepUp.cell.medianPrice)}
+                </strong>{' '}
+                au prix médian.{' '}
+              </>
+            )
+          }
+          {
+            stepDown && (
+              <>
+                Choisir un{' '}
+                {stepDown.hasPage ? (
+                  <a
+                    class="font-medium text-brand-600 underline decoration-brand-300 underline-offset-2 hover:text-brand-700"
+                    href={roomPagePath(commune, stepDown.rooms)}
+                  >
+                    {stepLabel(stepDown)} {where}
+                  </a>
+                ) : (
+                  `${stepLabel(stepDown)} ${where}`
+                )}{' '}
+                plutôt qu'un {prose} fait économiser{' '}
+                <strong class="font-medium text-ink">{formatEuro(Math.abs(stepDown.delta))}</strong>,
+                à{' '}
+                <strong class="font-medium text-ink">
+                  {formatEuro(stepDown.cell.medianPrice)}
+                </strong>
+                .{' '}
+              </>
+            )
+          }
+          {asymmetry === 'up' &&
+            `Les deux marches ne se valent pas : la pièce en plus coûte nettement plus cher que la pièce en moins ne fait économiser.`}
+          {asymmetry === 'down' &&
+            `Les deux marches ne se valent pas : la pièce en moins fait économiser nettement plus que la pièce en plus ne coûte.`}
         </p>
 
         {Math.abs(premium) >= PREMIUM_FLOOR && (
@@ -444,6 +578,8 @@ const jsonLd = {
       </section>
     )
   }
+
+  <Faq items={faq} />
 
   <section class="my-14">
     <h2 class="text-xl font-semibold">Continuer {where}</h2>

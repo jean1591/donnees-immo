@@ -314,3 +314,27 @@ export const roomHubPath = (rooms) => `/prix-t${rooms}-par-ville`
 
 /** Typologies with something to list. Empty leaderboards get no page. */
 export const roomHubs = PAGE_ROOMS.filter((rooms) => roomLeaderboard(rooms).length > 0)
+
+const middleOf = (values) => {
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.floor((sorted.length - 1) / 2)]
+}
+
+/**
+ * What this typology looks like across the communes that publish it — the middle
+ * commune's floor area and price per sqm.
+ *
+ * Lets a page say whether its own T3 is a small one or a large one, which is the
+ * question the surface figure raises and which no single page can answer alone.
+ * It is the middle of fifty commune medians over the largest markets, not a
+ * national median; the prose that uses it says so.
+ */
+export const roomBenchmark = (rooms, type = ROOM_PAGE_TYPE) => {
+  const board = roomLeaderboard(rooms, type)
+  if (!board.length) return null
+  return {
+    communes: board.length,
+    medianArea: middleOf(board.map((entry) => entry.cell.medianArea)),
+    pricePerSqm: middleOf(board.map((entry) => entry.cell.pricePerSqm)),
+  }
+}

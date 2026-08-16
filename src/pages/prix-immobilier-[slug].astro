@@ -6,6 +6,7 @@ import PriceChart from '../components/PriceChart.astro'
 import YearlyTable from '../components/YearlyTable.astro'
 import PriceRange from '../components/PriceRange.astro'
 import RoomsTable from '../components/RoomsTable.astro'
+import Faq from '../components/Faq.astro'
 import {
   allCommunes,
   arrondissements,
@@ -27,6 +28,7 @@ import {
   TYPE_LABELS,
 } from '../lib/format.js'
 import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { buildFaq } from '../lib/faq.js'
 
 export function getStaticPaths() {
   return allCommunes.map((commune) => ({ params: { slug: commune.slug }, props: { commune } }))
@@ -41,6 +43,10 @@ const leadTrend = evolution(commune, types[0], 1)
 const totalSales = types.reduce((sum, type) => sum + commune.recent[type].count, 0)
 const lastYear = commune.yearly.at(-1).year
 const where = locative(commune.name)
+
+// Only the questions this commune's own figures answer, so the set differs
+// from page to page along with the numbers in it.
+const faq = buildFaq(commune)
 
 const children = arrondissements(commune)
 const city = parentCity(commune)
@@ -107,6 +113,21 @@ const jsonLd = {
     measurementTechnique: `Médiane sur ${formatCount(commune.recent[type].count)} ventes, 24 mois glissants`,
   })),
 }
+
+// FAQPage only where the block is genuinely rendered, and worded identically:
+// marking up an answer the visitor cannot read is what Google's guidelines
+// forbid, and the shared strings make the two impossible to desynchronise.
+const faqLd = faq.length && {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faq.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: { '@type': 'Answer', text: item.answer },
+  })),
+}
+
+const structuredData = [jsonLd, faqLd].filter(Boolean)
 ---
 
 <Base title={title} description={description}>
@@ -114,7 +135,7 @@ const jsonLd = {
     slot="head"
     type="application/ld+json"
     is:inline
-    set:html={JSON.stringify(jsonLd)}
+    set:html={JSON.stringify(structuredData)}
   />
 
   <Breadcrumb
@@ -171,6 +192,8 @@ const jsonLd = {
   <PriceRange commune={commune} types={types} />
 
   <RoomsTable rooms={commune.rooms} types={types} commune={commune} />
+
+  <Faq items={faq} />
 
   {
     children.length > 0 && (
