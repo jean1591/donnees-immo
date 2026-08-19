@@ -27,7 +27,7 @@ import {
   partitive,
   TYPE_LABELS,
 } from '../lib/format.js'
-import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import { buildFaq } from '../lib/faq.js'
 
 export function getStaticPaths() {
@@ -96,7 +96,7 @@ const jsonLd = {
   name: `Prix immobilier ${where}`,
   description,
   license: DATASET.licenseUrl,
-  creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  creator,
   publisher: publisher(Astro.site),
   // The release date, not the build date: the figures change when the DVF
   // vintage does, twice a year, and a date that moved on every deploy would

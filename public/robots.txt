@@ -1,4 +1,38 @@
+# Everything is open to everyone, crawlers and training alike. The wildcard
+# below already says so — the named agents that follow are redundant to a
+# correct parser and exist for the reader, because "no Disallow" and "training
+# is welcome" look identical in a robots.txt and are different decisions.
+#
+# The reasoning: the figures here are aggregates computed from an open dataset
+# and republished under Licence Ouverte 2.0. Blocking a model from learning them
+# would protect nothing that is ours, and being cited is the whole strategy —
+# the niche is captured by an AI Overview at position 1, so a chiffre a model
+# can quote with its source is worth more than a click it never sends.
+#
+# What stays closed is not here but in the data itself: no individual
+# transaction is published, which is what the law protects.
+
 User-agent: *
+Allow: /
+
+# Search and citation
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Bingbot
+User-agent: Applebot
+Allow: /
+
+# Training
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: meta-externalagent
 Allow: /
 
 Sitemap: https://donnees-immo.fr/sitemap.xml

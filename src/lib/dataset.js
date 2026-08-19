@@ -55,6 +55,21 @@ export const publisher = (site) => ({
 })
 
 /**
+ * Who produced the transactions the medians are computed from.
+ *
+ * `Organization` rather than the `GovernmentOrganization` this used to carry.
+ * The narrower type is valid schema.org and describes DGFiP more precisely, but
+ * Google's Dataset parser only accepts `Organization` or `Person` for `creator`
+ * and flags anything else — the URL inspection API reported the warning on
+ * every page of the site. Precision nobody consumes is worth less than markup
+ * that validates, and the name still says which administration it is.
+ */
+export const creator = {
+  '@type': 'Organization',
+  name: 'Direction générale des finances publiques (DGFiP)',
+}
+
+/**
  * A named place, with coordinates when the export carries them — the median
  * location of the area's own sales, four decimals. Two communes out of 3 630
  * have none: DVF geolocates neither, and a Place without `geo` is still valid

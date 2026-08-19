@@ -13,7 +13,7 @@ import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 import RowLinks from '../components/RowLinks.astro'
 import { ROOM_PAGE_TYPE, roomHubPath, roomHubs, roomLeaderboard } from '../lib/rooms.js'
-import { DATASET, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import {
   formatArea,
   formatCount,
@@ -57,11 +57,14 @@ const jsonLd = {
   name: `Prix d'un ${label} par ville`,
   description,
   license: DATASET.licenseUrl,
-  creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  creator,
   publisher: publisher(Astro.site),
   dateModified: DATASET.releaseDate,
   temporalCoverage: `${RECENT_WINDOW.firstYear}/${RECENT_WINDOW.lastYear}`,
-  spatialCoverage: { '@type': 'Country', name: 'France' },
+  // `Place`, not the `Country` this carried: Google's Dataset parser accepts
+  // Place or plain text for spatialCoverage and warns on anything narrower —
+  // the same reason `creator` dropped GovernmentOrganization.
+  spatialCoverage: place('France'),
   isBasedOn: DATASET.sourceUrl,
   variableMeasured: {
     '@type': 'PropertyValue',

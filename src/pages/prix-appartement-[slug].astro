@@ -27,7 +27,7 @@ import {
   roomShare,
   roomSteps,
 } from '../lib/rooms.js'
-import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import { buildTypologyFaq } from '../lib/faq.js'
 import {
   formatArea,
@@ -180,7 +180,7 @@ const jsonLd = {
   name: `Prix d'un ${label} ${where}`,
   description,
   license: DATASET.licenseUrl,
-  creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  creator,
   publisher: publisher(Astro.site),
   dateModified: DATASET.releaseDate,
   temporalCoverage: series

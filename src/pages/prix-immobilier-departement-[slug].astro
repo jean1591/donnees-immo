@@ -10,7 +10,7 @@ import YearlyTable from '../components/YearlyTable.astro'
 import Faq from '../components/Faq.astro'
 import { departmentRank, departments, gapToNational, national } from '../lib/departments.js'
 import { isRankable, publishedTypes, rankByEvolution, yearlyVolume } from '../lib/communes.js'
-import { DATASET, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import { buildDepartmentFaq } from '../lib/faq.js'
 import {
   agree,
@@ -145,7 +145,7 @@ const dataset = lead && {
   name: `Prix immobilier — département ${department.name} (${department.code})`,
   description,
   license: DATASET.licenseUrl,
-  creator: { '@type': 'GovernmentOrganization', name: 'DGFiP' },
+  creator,
   publisher: publisher(Astro.site),
   dateModified: DATASET.releaseDate,
   temporalCoverage: `${DATASET.firstYear}/${DATASET.lastYear}`,
