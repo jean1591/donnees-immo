@@ -28,11 +28,10 @@ export const EDITOR = {
 }
 
 /**
- * The site as an entity, distinct from DGFiP: DGFiP produced the transactions,
- * donnees-immo.fr computes and publishes the medians. Both belong in the
- * markup — `creator` for the source, `publisher` for whoever stands behind the
- * figure — and conflating them would credit the administration with numbers it
- * never published.
+ * The site as an entity, distinct from both the editor who computes the figures
+ * and DGFiP who produced the transactions. Three roles, three properties:
+ * `creator` for whoever did the computing, `publisher` for the site that puts
+ * them out, `isBasedOn` for the source.
  *
  * The organisation carries a `founder`, and the person carries the `sameAs`:
  * behind this site there is one identifiable individual, not a newsroom, and
@@ -55,18 +54,45 @@ export const publisher = (site) => ({
 })
 
 /**
- * Who produced the transactions the medians are computed from.
+ * Who computed the medians this page describes.
  *
- * `Organization` rather than the `GovernmentOrganization` this used to carry.
- * The narrower type is valid schema.org and describes DGFiP more precisely, but
- * Google's Dataset parser only accepts `Organization` or `Person` for `creator`
- * and flags anything else — the URL inspection API reported the warning on
- * every page of the site. Precision nobody consumes is worth less than markup
- * that validates, and the name still says which administration it is.
+ * The editor, not DGFiP — this used to name the administration and that was
+ * wrong. The Dataset described by a page here is the aggregate: the medians,
+ * the deciles, the series. DGFiP produced the transactions those are computed
+ * from, which is a different dataset, named below in `basedOn`. Crediting the
+ * administration with `creator` claims it published figures it never published,
+ * and contradicted llms.txt, which says so in as many words.
+ *
+ * `Person` rather than the site Organization, which stays as `publisher`: the
+ * author/publisher split is the standard reading, and behind these figures
+ * there is one identifiable individual.
  */
 export const creator = {
-  '@type': 'Organization',
-  name: 'Direction générale des finances publiques (DGFiP)',
+  '@type': 'Person',
+  name: EDITOR.name,
+  url: EDITOR.contact,
+  sameAs: [EDITOR.contact],
+}
+
+/**
+ * The source dataset, as an entity rather than a bare URL, so DGFiP is named in
+ * the markup as what it actually is: the creator of the transactions, not of
+ * the medians derived from them.
+ *
+ * `Organization` and not the more precise `GovernmentOrganization`: Google's
+ * Dataset parser accepts only Organization or Person for `creator` and warned
+ * on every page of the site until this was changed. The name carries the
+ * precision the type used to.
+ */
+export const basedOn = {
+  '@type': 'Dataset',
+  name: 'Demandes de valeurs foncières géolocalisées',
+  url: DATASET.sourceUrl,
+  license: DATASET.licenseUrl,
+  creator: {
+    '@type': 'Organization',
+    name: 'Direction générale des finances publiques (DGFiP)',
+  },
 }
 
 /**

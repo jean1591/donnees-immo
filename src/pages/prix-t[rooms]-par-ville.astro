@@ -13,7 +13,7 @@ import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
 import RowLinks from '../components/RowLinks.astro'
 import { ROOM_PAGE_TYPE, roomHubPath, roomHubs, roomLeaderboard } from '../lib/rooms.js'
-import { DATASET, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, basedOn, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import {
   formatArea,
   formatCount,
@@ -65,7 +65,7 @@ const jsonLd = {
   // Place or plain text for spatialCoverage and warns on anything narrower —
   // the same reason `creator` dropped GovernmentOrganization.
   spatialCoverage: place('France'),
-  isBasedOn: DATASET.sourceUrl,
+  isBasedOn: basedOn,
   variableMeasured: {
     '@type': 'PropertyValue',
     name: `Prix médian au m² — appartement ${rooms} pièces`,

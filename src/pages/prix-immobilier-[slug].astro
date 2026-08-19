@@ -27,7 +27,7 @@ import {
   partitive,
   TYPE_LABELS,
 } from '../lib/format.js'
-import { DATASET, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, basedOn, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import { buildFaq } from '../lib/faq.js'
 
 export function getStaticPaths() {
@@ -104,7 +104,7 @@ const jsonLd = {
   dateModified: DATASET.releaseDate,
   temporalCoverage: `${commune.yearly[0].year}/${lastYear}`,
   spatialCoverage: place(commune.name, commune.geo),
-  isBasedOn: DATASET.sourceUrl,
+  isBasedOn: basedOn,
   variableMeasured: types.map((type) => ({
     '@type': 'PropertyValue',
     name: `Prix médian au m² — ${TYPE_LABELS[type].plural}`,

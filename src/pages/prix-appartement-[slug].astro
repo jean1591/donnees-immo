@@ -27,7 +27,7 @@ import {
   roomShare,
   roomSteps,
 } from '../lib/rooms.js'
-import { DATASET, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
+import { DATASET, basedOn, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import { buildTypologyFaq } from '../lib/faq.js'
 import {
   formatArea,
@@ -187,7 +187,7 @@ const jsonLd = {
     ? `${series[0].year}/${series.at(-1).year}`
     : `${commune.yearly[0].year}/${commune.yearly.at(-1).year}`,
   spatialCoverage: place(commune.name, commune.geo),
-  isBasedOn: DATASET.sourceUrl,
+  isBasedOn: basedOn,
   variableMeasured: [
     {
       '@type': 'PropertyValue',
