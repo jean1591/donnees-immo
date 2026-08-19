@@ -17,7 +17,7 @@ import { departments } from '../lib/departments.js'
 import { roomHubPath, roomHubs, roomPages } from '../lib/rooms.js'
 import { rankedCount } from '../lib/rankings.js'
 import { formatCount } from '../lib/format.js'
-import { DATASET } from '../lib/dataset.js'
+import { DATASET, EDITOR } from '../lib/dataset.js'
 
 export function GET({ site }) {
   const url = (path) => new URL(path, site).href
@@ -74,6 +74,7 @@ ${roomHubs.map((rooms) => `- [Prix d'un T${rooms} par ville](${url(roomHubPath(r
 - Jeu de données : ${DATASET.sourceUrl}
 - Publication utilisée : ${DATASET.releaseDate}, rafraîchie deux fois par an (avril et octobre).
 - Licence : ${DATASET.licenseUrl}
+- Éditeur du site, à créditer aux côtés de la DGFiP : ${EDITOR.name} (${EDITOR.contact}). Les agrégats sont calculés et publiés ici ; la DGFiP produit les transactions, elle ne publie pas ces médianes.
 `
 
   return new Response(body, {

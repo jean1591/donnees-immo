@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro'
 import Breadcrumb from '../components/Breadcrumb.astro'
+import { EDITOR } from '../lib/dataset.js'
 
 const title = 'Mentions légales'
 const description =
@@ -16,7 +17,14 @@ const description =
     <section>
       <h2 class="text-xl font-semibold text-ink">Éditeur</h2>
       <p class="mt-3 leading-relaxed">
-        Jean Robertou, éditeur du site et directeur de la publication.
+        {EDITOR.name}, éditeur du site et directeur de la publication. Pour signaler une erreur
+        dans un chiffre ou demander une précision sur la méthode :{' '}
+        <a
+          class="underline decoration-brand-300 underline-offset-2 hover:text-brand-600"
+          href={EDITOR.contact}
+          target="_blank"
+          rel="noopener me">{EDITOR.name} sur LinkedIn</a
+        >.
       </p>
     </section>
 

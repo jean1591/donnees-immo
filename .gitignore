@@ -5,3 +5,8 @@ dist/
 .astro/
 # Claude Code local settings
 .claude/settings.local.json
+
+# Google service account key, read by the Search Console MCP server. Matched by
+# shape rather than by name: the next key Google issues carries a different
+# hash, and a rule that only covers this one would let it through.
+donnees-immo-*.json

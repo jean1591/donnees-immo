@@ -15,21 +15,43 @@ export const DATASET = {
 }
 
 /**
+ * Whoever stands behind the figures, named. The legal notice already carries
+ * this — the constant exists so the page and the markup say the same thing.
+ *
+ * `contact` is a LinkedIn profile rather than a mailbox on purpose: it is how a
+ * reader checks who publishes this, not only how they write to them, and an
+ * address on a static page collects more spam than mail.
+ */
+export const EDITOR = {
+  name: 'Jean Robertou',
+  contact: 'https://www.linkedin.com/in/robertoujean/',
+}
+
+/**
  * The site as an entity, distinct from DGFiP: DGFiP produced the transactions,
  * donnees-immo.fr computes and publishes the medians. Both belong in the
  * markup — `creator` for the source, `publisher` for whoever stands behind the
  * figure — and conflating them would credit the administration with numbers it
  * never published.
  *
- * No `sameAs`: the site has no profile anywhere to point at. The property
- * exists to tie an entity to its known accounts, and inventing one would state
- * something false to satisfy a checklist.
+ * The organisation carries a `founder`, and the person carries the `sameAs`:
+ * behind this site there is one identifiable individual, not a newsroom, and
+ * saying so is the whole point. A figure that can be traced to someone who put
+ * their name on it is citable in a way an anonymous domain is not — which is
+ * what the site is betting on against competitors publishing unsourced
+ * estimates.
  */
 export const publisher = (site) => ({
   '@type': 'Organization',
   name: DATASET.siteName,
   url: new URL('/', site).href,
   logo: new URL('/favicon.svg', site).href,
+  founder: {
+    '@type': 'Person',
+    name: EDITOR.name,
+    url: EDITOR.contact,
+    sameAs: [EDITOR.contact],
+  },
 })
 
 /**
