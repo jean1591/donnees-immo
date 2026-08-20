@@ -176,9 +176,10 @@ Flat, long-tail oriented:
 - `/prix-immobilier-bordeaux-evolution` (not "historique")
 - `/prix-immobilier-bordeaux-2025` (year as a suffix, never as a path segment)
 - `/prix-appartement-3-pieces-bordeaux` — one apartment typology in one commune.
-  T2, T3 and T4 only, and only where the cell holds 100 sales over 24 months, in
-  the 50 largest apartment markets. Houses are excluded: room count is not how a
-  house is shopped. Selection lives in `src/lib/rooms.js`.
+  T2, T3 and T4 only, and only where that cell holds 100 sales over 24 months —
+  the sample is the whole selection, there is no cap on how many communes
+  qualify. Houses are excluded: room count is not how a house is shopped.
+  Selection lives in `src/lib/rooms.js`.
 - `/prix-t3-par-ville` — the hub listing every commune publishing that typology.
   Deliberately not `prix-appartement-3-pieces-par-ville`: the page above matches
   its whole URL tail, so the two route families must not share a prefix.

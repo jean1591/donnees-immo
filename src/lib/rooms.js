@@ -45,18 +45,7 @@ export const ROOM_PAGE_TYPE = 'apartment'
 export const PAGE_ROOMS = [2, 3, 4]
 
 /**
- * How many communes get typology pages, largest apartment market first.
- *
- * Ranking by recorded sales rather than by population is not a compromise: it
- * ranks communes by how much of a market there is to describe, which is also
- * what the pages are about. INSEE population was ruled out of the project on its
- * own merits, and would have ranked commuter towns above resort towns that trade
- * far more.
- */
-const TOP_COMMUNES = 50
-
-/**
- * Sales a cell needs over the 24-month window to get a page.
+ * Sales a cell needs over the 24-month window to get a page — the only gate.
  *
  * At 100 the measured margin of error on the median is 5.7 % for apartments,
  * against 8.0 % at 50 and 13.7 % at 20. The commune pages live with 50 because
@@ -64,9 +53,18 @@ const TOP_COMMUNES = 50
  * page states a narrower figure and invites it to be compared with the typology
  * next door, where an 8 % margin either side swallows the difference being read.
  *
- * The bar costs almost nothing at this selection size — it drops a handful of
- * cells out of the top 50 — and it is what keeps the page selection honest if
- * TOP_COMMUNES is ever raised.
+ * This used to sit behind a second, editorial bound — the 50 largest apartment
+ * markets — carried over from the configurator that was considered and dropped.
+ * For a JavaScript tool the cap was right: every extra commune weighed on a
+ * build and captured nothing. For a static page it is the opposite. A page that
+ * draws five visits a month costs nothing, dilutes nothing while it clears the
+ * bar above, and answers a query nobody else answers with data. The claim that
+ * the tail of "prix T3" queries dries up early was never measured, and nothing
+ * in the search data supports it.
+ *
+ * So the statistical bar is the whole selection now: publish wherever the data
+ * holds, nowhere else. That is also the site's one argument against competitors
+ * publishing all 34 875 communes regardless of sample.
  */
 const MIN_CELL_SALES = 100
 
@@ -98,19 +96,28 @@ export const roomCell = (commune, rooms, type = ROOM_PAGE_TYPE) =>
   commune.rooms[type].find((cell) => cell.rooms === rooms) ?? null
 
 /**
- * The largest apartment markets, in order. Computed once: every page asks for
- * the same list, and every room-count table asks whether its commune is in it.
+ * Every commune publishing at least one typology, largest apartment market
+ * first. Computed once: every page asks for the same list, and every room-count
+ * table asks whether its commune is in it.
  */
 const selectedCommunes = communes
-  .filter((commune) => hasData(commune.recent[ROOM_PAGE_TYPE]))
+  .filter(
+    (commune) =>
+      hasData(commune.recent[ROOM_PAGE_TYPE]) &&
+      PAGE_ROOMS.some((rooms) => (roomCell(commune, rooms)?.count ?? 0) >= MIN_CELL_SALES)
+  )
   .sort((a, b) => b.recent[ROOM_PAGE_TYPE].count - a.recent[ROOM_PAGE_TYPE].count)
-  .slice(0, TOP_COMMUNES)
 
-const selectedCodes = new Set(selectedCommunes.map((commune) => commune.code))
-
-/** Whether a commune × typology is published as a page — drives the links to it. */
+/**
+ * Whether a commune × typology is published as a page — drives the links to it.
+ *
+ * A commune can qualify on one typology and not its neighbour, which is the
+ * point: the page exists where the sample holds it up, and the reader is told
+ * how many sales it rests on. Sibling links and the hub tables read this, so a
+ * link is never offered to a page that was not built.
+ */
 export const hasRoomPage = (commune, rooms) => {
-  if (!selectedCodes.has(commune.code) || !PAGE_ROOMS.includes(rooms)) return false
+  if (!PAGE_ROOMS.includes(rooms)) return false
   const cell = roomCell(commune, rooms)
   return Boolean(cell && cell.count >= MIN_CELL_SALES)
 }
