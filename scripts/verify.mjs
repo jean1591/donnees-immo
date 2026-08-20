@@ -46,6 +46,11 @@ const pages = files.map((path) => {
     description: first(html, /<meta name="description" content="([^"]*)"/),
     canonical: first(html, /<link rel="canonical" href="([^"]*)"/),
     h1: (html.match(/<h1[\s>]/g) ?? []).length,
+    // A template comment between the doctype and <html> makes Astro emit the
+    // page with no html, head or body element at all — the title, the canonical
+    // and the markup all survive, so every other check here passes while the
+    // document declares no language. Cheap to assert, and it happened.
+    lang: first(html, /<html[^>]*\slang="([^"]*)"/),
     noindex: /name="robots"[^>]*noindex/i.test(html),
     blocks: [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(
       (match) => match[1]
@@ -133,6 +138,7 @@ for (const page of indexable) {
   if (!page.title) fail('Titre absent', page.url)
   if (!page.description) fail('Description absente', page.url)
   if (page.h1 !== 1) fail('H1 absent ou multiple', `${page.url} — ${page.h1}`)
+  if (page.lang !== 'fr') fail('<html lang="fr"> absent', `${page.url} — ${page.lang ?? 'aucun <html>'}`)
   const expected = `${SITE}${page.url === '/' ? '/' : page.url}`
   if (page.canonical !== expected) {
     fail('Canonical incohérente', `${page.url} — ${page.canonical ?? 'absente'}`)

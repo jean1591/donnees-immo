@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css'
-import { DATASET } from '../lib/dataset.js'
+import { DATASET, LAST_MODIFIED } from '../lib/dataset.js'
 
 const { title, description, canonical } = Astro.props
 const href = canonical ?? new URL(Astro.url.pathname, Astro.site).href
@@ -10,10 +10,18 @@ const href = canonical ?? new URL(Astro.url.pathname, Astro.site).href
 // the URL: social scrapers cache an image by address more or less forever, and
 // without it a refreshed dataset would keep sharing the previous count.
 const ogImage = new URL(`/og.png?v=${DATASET.releaseDate}`, Astro.site).href
+
+// Cache key for /search-index.json, which the homepage stores as immutable. It
+// follows LAST_MODIFIED and not the release: the index gained 945 typology
+// entries without the data moving an inch, and a browser holding the previous
+// copy would keep searching a list those pages are missing from.
+//
+// Nothing may sit between the doctype and <html> below — a template comment
+// there makes Astro drop the html, head and body elements altogether.
 ---
 
 <!doctype html>
-<html lang="fr" data-dataset-version={DATASET.releaseDate}>
+<html lang="fr" data-dataset-version={LAST_MODIFIED}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -3,8 +3,18 @@
 // apart. Update all of it here when the ETL is re-run against a new release.
 
 export const DATASET = {
-  /** Publication date of the DVF release, and therefore of every page. */
+  /** Publication date of the DVF release, and therefore of every figure. */
   releaseDate: '2026-04-01',
+  /**
+   * When the pages last changed for a reason other than the data — new page
+   * types, rewritten copy, markup fixes.
+   *
+   * Bump it by hand, and only when the change is one a reader would notice.
+   * Deriving it from the build would put a fresh date on every deploy including
+   * the ones that change nothing, which is exactly the signal that teaches a
+   * crawler to stop believing `lastmod`.
+   */
+  contentUpdated: '2026-08-20',
   /** Last day covered by the data. */
   coverageEnd: '31 décembre 2025',
   firstYear: 2021,
@@ -13,6 +23,23 @@ export const DATASET = {
   licenseUrl: 'https://www.etalab.gouv.fr/licence-ouverte-open-licence',
   siteName: 'donnees-immo.fr',
 }
+
+/**
+ * What the sitemap reports as `lastmod`: the later of the two dates above.
+ *
+ * The release date alone was right while the pages were a pure function of the
+ * data — a rebuild that changed nothing had no business claiming freshness. It
+ * stopped being right once the templates started changing on their own: 945
+ * pages were added and 3 887 rewritten under a `lastmod` still reading 1 April,
+ * so a crawler was told nothing had moved.
+ *
+ * Both are ISO dates, which sort as strings.
+ *
+ * This is deliberately not the Dataset's `dateModified`, which stays on the
+ * release: the medians did not change when the wording around them did.
+ */
+export const LAST_MODIFIED =
+  DATASET.contentUpdated > DATASET.releaseDate ? DATASET.contentUpdated : DATASET.releaseDate
 
 /**
  * Whoever stands behind the figures, named. The legal notice already carries

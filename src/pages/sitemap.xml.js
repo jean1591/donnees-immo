@@ -10,12 +10,15 @@
 import { allCommunes } from '../lib/communes.js'
 import { departments } from '../lib/departments.js'
 import { roomHubPath, roomHubs, roomPagePath, roomPages } from '../lib/rooms.js'
-import { DATASET } from '../lib/dataset.js'
+import { LAST_MODIFIED } from '../lib/dataset.js'
 
-// Everything is regenerated from the same DVF release, so the whole site shares
-// one lastmod. Without it crawlers have no signal that 3730 pages changed at
-// once when the dataset is refreshed twice a year.
-const lastmod = DATASET.releaseDate
+// Everything is regenerated at once, so the whole site shares one lastmod —
+// without it crawlers have no signal that thousands of pages changed together
+// when the dataset is refreshed twice a year.
+//
+// It is the later of the DVF release and the last deliberate content change,
+// never the build date: see LAST_MODIFIED in lib/dataset.js for why.
+const lastmod = LAST_MODIFIED
 
 // Read off the filesystem rather than listed by hand. Four ranking pages were
 // added in a single afternoon, and nothing but memory stood between them and a
