@@ -195,7 +195,7 @@ const jsonLd = {
     </h2>
     {
       area(leadGap.cheaper) - area(leadGap.dearer) > 0 && (
-        <p class="mt-2 max-w-2xl text-2xl leading-snug tracking-tight sm:text-3xl">
+        <p class="mt-2 max-w-2xl text-xl leading-snug tracking-tight sm:text-2xl">
           <strong class="font-semibold text-brand-600">
             {`${formatArea(area(leadGap.cheaper) - area(leadGap.dearer))} de plus ${locative(leadGap.cheaper.name)}`}
           </strong>{' '}
@@ -238,7 +238,7 @@ const jsonLd = {
           />
           {TYPE_LABELS[type].title}
         </h2>
-        <p class="mt-2 max-w-2xl text-2xl leading-snug tracking-tight sm:text-3xl">
+        <p class="mt-2 max-w-2xl text-xl leading-snug tracking-tight sm:text-2xl">
           <strong class="font-semibold" style={`color:${DEARER}`}>
             {gapPhrase(type).strong}
           </strong>{' '}
