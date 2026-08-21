@@ -189,9 +189,21 @@ const jsonLd = {
     pas des prix affichés dans les annonces.
   </p>
 
-  <section class="mt-10">
-    <h2 class="text-xl font-semibold">Ce que {formatEuro(BUDGET)} achètent</h2>
-    <p class="mt-1 text-sm text-ink-secondary">
+  <section class="mt-14">
+    <h2 class="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+      Ce que {formatEuro(BUDGET)} achètent
+    </h2>
+    {
+      area(leadGap.cheaper) - area(leadGap.dearer) > 0 && (
+        <p class="mt-2 max-w-2xl text-2xl leading-snug tracking-tight sm:text-3xl">
+          <strong class="font-semibold text-brand-600">
+            {`${formatArea(area(leadGap.cheaper) - area(leadGap.dearer))} de plus ${locative(leadGap.cheaper.name)}`}
+          </strong>{' '}
+          <span class="text-ink-secondary">pour le même budget.</span>
+        </p>
+      )
+    }
+    <p class="mt-2 text-sm text-ink-secondary">
       À la médiane du m², pour {leadNoun}.
     </p>
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -209,31 +221,32 @@ const jsonLd = {
         ))
       }
     </div>
-    {
-      area(leadGap.cheaper) - area(leadGap.dearer) > 0 && (
-        <p class="mt-4 rounded-xl border border-brand-300 bg-brand-100 px-5 py-4 text-lg leading-snug text-brand-700 sm:text-xl">
-          <strong class="font-semibold">
-            {`${formatArea(area(leadGap.cheaper) - area(leadGap.dearer))} de plus ${locative(leadGap.cheaper.name)}`}
-          </strong>{' '}
-          pour le même budget.
-        </p>
-      )
-    }
   </section>
 
   {
     data.types.map((type) => (
-      <section class="mt-10">
-        <h2 class="text-xl font-semibold">{TYPE_LABELS[type].title}</h2>
-        <p class="mt-2 text-lg leading-snug sm:text-xl">
+      <section class="mt-14">
+        {/* The type is the label and the gap is the statement, not the reverse:
+            two lines of similar weight left the reader deciding which to read
+            first. The tiles below already name the type in the same colour, so
+            the heading has no size to justify — only an outline to hold. */}
+        <h2 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <span
+            class="inline-block h-2 w-2 rounded-full"
+            style={`background:var(--color-series-${type === 'apartment' ? 'apartment' : 'house'})`}
+            aria-hidden="true"
+          />
+          {TYPE_LABELS[type].title}
+        </h2>
+        <p class="mt-2 max-w-2xl text-2xl leading-snug tracking-tight sm:text-3xl">
           <strong class="font-semibold" style={`color:${DEARER}`}>
-            <span aria-hidden="true">↑</span> {gapPhrase(type).strong}
+            {gapPhrase(type).strong}
           </strong>{' '}
-          {gapPhrase(type).rest}
+          <span class="text-ink-secondary">{gapPhrase(type).rest}</span>
         </p>
         <div class="mt-4 grid gap-4 md:grid-cols-2">
-          <StatTile commune={a} type={type} />
-          <StatTile commune={b} type={type} />
+          <StatTile commune={a} type={type} label={a.name} />
+          <StatTile commune={b} type={type} label={b.name} />
         </div>
       </section>
     ))

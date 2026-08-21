@@ -5,7 +5,11 @@
 import { formatArea, formatCount, formatEuro, formatPercent, formatPricePerSqm, TYPE_LABELS } from '../lib/format.js'
 import { evolution } from '../lib/communes.js'
 
-const { commune, type } = Astro.props
+// `label` overrides the header where the type is already named by the section
+// around the tile and something else needs the slot — on a city-versus-city
+// page the two tiles carry the same type, so headers reading « Appartements »
+// twice left the reader with no way to tell which column was which city.
+const { commune, type, label: heading } = Astro.props
 const block = commune.recent[type]
 const label = TYPE_LABELS[type]
 
@@ -21,8 +25,14 @@ const dotColor =
 <section class="rounded-xl border border-hairline bg-surface p-6 shadow-[0_1px_3px_rgba(28,24,21,0.05)]">
   <header class="flex items-baseline justify-between gap-4">
     <h2 class="flex items-center gap-2 text-sm font-semibold">
-      <span class="inline-block h-2 w-2 rounded-full" style={`background:${dotColor}`} aria-hidden="true"></span>
-      {label.title}
+      {/* The dot keys the header to the type's series colour. Under a `label` it
+          would key it to nothing: the same city reads orange in the apartment
+          section and blue in the house one, and the section above already
+          carries both the type and its colour. */}
+      {!heading && (
+        <span class="inline-block h-2 w-2 rounded-full" style={`background:${dotColor}`} aria-hidden="true" />
+      )}
+      {heading ?? label.title}
     </h2>
     <span class="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-medium text-brand-700 tabular">
       {formatCount(block.count)} ventes
