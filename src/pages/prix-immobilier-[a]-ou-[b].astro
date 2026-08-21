@@ -20,7 +20,7 @@ import {
   roomLabel,
   TYPE_LABELS,
 } from '../lib/format.js'
-import { roomPagePath } from '../lib/rooms.js'
+import { PAGE_ROOMS, hasRoomPage, roomCell, roomPagePath } from '../lib/rooms.js'
 import { buildPairFaq } from '../lib/faq.js'
 import Faq from '../components/Faq.astro'
 import { DATASET, basedOn, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
@@ -134,7 +134,21 @@ const disjointSentence =
     `${formatPricePerSqm(data.spread.dearer.recent[lead].d1)}, dépasse déjà le prix médian ` +
     `${locative(data.spread.cheaper.name)}.`
 
-const faq = buildPairFaq({ a, b, data, budget: BUDGET })
+// What the budget buys expressed as a typology, in the card rather than in a
+// question of its own: « un T4 ici, un T2 là » is the same fact as the square
+// metres above it, said in the unit a buyer holds it in. Asking it again lower
+// down would be the same figure twice.
+const budgetLine = (city) => {
+  const affordable = data.budget[city.code]
+  if (affordable) {
+    return `un T${affordable.rooms} au prix médian, ${formatEuro(affordable.cell.medianPrice)}`
+  }
+  const smallest = PAGE_ROOMS.find((rooms) => hasRoomPage(city, rooms))
+  if (!smallest) return null
+  return `même un T${smallest}, à ${formatEuro(roomCell(city, smallest).medianPrice)}, dépasse ce budget`
+}
+
+const faq = buildPairFaq({ a, b, data })
 
 const title = `${a.name} ou ${b.name} : prix immobilier comparés`
 const description = `${a.name} ou ${b.name} ? ${formatPricePerSqm(a.recent[lead].pricePerSqm)} contre ${formatPricePerSqm(b.recent[lead].pricePerSqm)} pour ${leadLabel.article} ${leadLabel.singular}. Comparaison sur ${formatCount(totalSales)} ventes réelles (DVF).`
@@ -254,6 +268,11 @@ const structuredData = [jsonLd, faqLd].filter(Boolean)
             <p class="mt-2 text-sm text-ink-secondary">
               soit {formatPricePerSqm(city.recent[lead].pricePerSqm)}
             </p>
+            {budgetLine(city) && (
+              <p class="mt-4 border-t border-hairline pt-4 text-sm text-ink-secondary">
+                {sentenceCase(budgetLine(city))}
+              </p>
+            )}
           </div>
         ))
       }

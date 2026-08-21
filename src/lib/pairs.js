@@ -13,9 +13,10 @@ import {
   byCode,
   evolution,
   hasData,
+  isRankable,
   TYPES,
 } from './communes.js'
-import { national } from './departments.js'
+import { departmentBySlug, national } from './departments.js'
 import { PAGE_ROOMS, hasRoomPage, roomCell } from './rooms.js'
 
 /**
@@ -236,6 +237,50 @@ const activity = (city) => {
   return { year: last.year, sales: after, from: first.year, ratio: after / before - 1 }
 }
 
+
+/**
+ * How the distance between the two cities changed over the span.
+ *
+ * Both commune pages carry their own trajectory; neither can carry this one. Two
+ * cities can both fall and still be drifting apart, which is what a reader
+ * choosing between them is actually asking about.
+ */
+const gapShift = (a, b, type) => {
+  const at = (city, year) => {
+    const entry = city.yearly.find((e) => e.year === year)
+    return entry?.[type]?.pricePerSqm && entry[type].count >= 50 ? entry[type].pricePerSqm : null
+  }
+  const from = a.yearly[0]?.year
+  const to = a.yearly.at(-1)?.year
+  const early = [at(a, from), at(b, from)]
+  const late = [at(a, to), at(b, to)]
+  if (early.some((v) => !v) || late.some((v) => !v)) return null
+  const ratio = (pair) => Math.max(...pair) / Math.min(...pair) - 1
+  return { from, to, before: ratio(early), after: ratio(late) }
+}
+
+/** Where a city sits among every commune publishing that type, dearest first. */
+const rankings = {}
+const rankOf = (city, type) => {
+  rankings[type] ??= allCommunes
+    .filter((c) => c.kind !== 'arrondissement' && isRankable(c.recent[type]))
+    .sort((x, y) => y.recent[type].pricePerSqm - x.recent[type].pricePerSqm)
+    .map((c) => c.code)
+  const index = rankings[type].indexOf(city.code)
+  return index === -1 ? null : { rank: index + 1, total: rankings[type].length }
+}
+
+/** How far a city sits above or below its own département on that type. */
+const versusDepartment = (city, type) => {
+  const department = departmentBySlug.get(city.department.slug)
+  const reference = department?.recent[type]?.pricePerSqm
+  if (!reference || !city.recent[type]?.pricePerSqm) return null
+  // Paris is its own département: comparing the commune with it yields « 0 % au
+  // -dessus de la médiane parisienne », which is true, circular and useless.
+  if (department.communes.length < 2) return null
+  return { name: department.name, reference, ratio: city.recent[type].pricePerSqm / reference - 1 }
+}
+
 /**
  * Everything a pair page states that neither commune page can.
  *
@@ -267,5 +312,10 @@ export const comparison = (a, b) => {
     spread: lead ? spread(a, b, lead) : null,
     budget: { [a.code]: budgetTypology(a), [b.code]: budgetTypology(b) },
     activity: { [a.code]: activity(a), [b.code]: activity(b) },
+    gapShift: lead ? gapShift(a, b, lead) : null,
+    rank: lead ? { [a.code]: rankOf(a, lead), [b.code]: rankOf(b, lead) } : {},
+    department: lead
+      ? { [a.code]: versusDepartment(a, lead), [b.code]: versusDepartment(b, lead) }
+      : {},
   }
 }
