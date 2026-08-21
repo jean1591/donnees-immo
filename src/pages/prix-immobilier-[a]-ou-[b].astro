@@ -9,6 +9,7 @@ import Breadcrumb from '../components/Breadcrumb.astro'
 import StatTile from '../components/StatTile.astro'
 import { BUDGET, comparison, pairPath, pairs, pairsOf } from '../lib/pairs.js'
 import {
+  agree,
   formatArea,
   formatCount,
   formatEuro,
@@ -122,16 +123,19 @@ const rangeSentence = (city) => {
   const block = city.recent[lead]
   return (
     `${sentenceCase(locative(city.name))}, la moitié des ${leadLabel.plural} se sont vendus entre ` +
-    `${formatCount(block.q1)} et ${formatPricePerSqm(block.q3)}, et un dixième sous ` +
+    `${formatCount(block.q1)} et ${formatPricePerSqm(block.q3)}, et un sur dix sous ` +
     `${formatPricePerSqm(block.d1)}.`
   )
 }
 
+// The two sentences above already print the tenth-percentile figure and the
+// median; repeating either here read as a stutter. What is left is the reading
+// of them — and « le premier décile dépasse le prix médian » was the wording
+// CLAUDE.md rules out anyway: percentiles get translated, never printed raw.
 const disjointSentence =
   data.spread?.disjoint &&
-  `Les deux marchés ne se recoupent presque pas : le premier décile ` +
-    `${locative(data.spread.dearer.name)}, à ` +
-    `${formatPricePerSqm(data.spread.dearer.recent[lead].d1)}, dépasse déjà le prix médian ` +
+  `Les deux marchés ne se croisent pratiquement pas : ce que ` +
+    `${data.spread.dearer.name} a de moins cher coûte encore plus cher que le milieu du marché ` +
     `${locative(data.spread.cheaper.name)}.`
 
 // What the budget buys expressed as a typology, in the card rather than in a
