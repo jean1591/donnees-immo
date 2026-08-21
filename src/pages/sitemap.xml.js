@@ -9,6 +9,7 @@
 
 import { allCommunes } from '../lib/communes.js'
 import { departments } from '../lib/departments.js'
+import { pairPath, pairs } from '../lib/pairs.js'
 import { roomHubPath, roomHubs, roomPagePath, roomPages } from '../lib/rooms.js'
 import { LAST_MODIFIED } from '../lib/dataset.js'
 
@@ -45,6 +46,9 @@ export function GET({ site }) {
     // brackets the same way it skips the commune pages: both are listed here.
     ...roomHubs.map((rooms) => roomHubPath(rooms)),
     ...roomPages.map(({ commune, rooms }) => roomPagePath(commune, rooms)),
+    // Only the canonical order of each pair. The reverse spelling exists as a
+    // 301 in public/_redirects and has no business in a sitemap.
+    ...pairs.map(({ a, b }) => pairPath(a, b)),
   ]
 
   // No XML escaping: every path is built from slugs, which are already reduced

@@ -29,6 +29,7 @@ import {
 } from '../lib/format.js'
 import { DATASET, basedOn, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 import { buildFaq } from '../lib/faq.js'
+import { isPairCity, pairPath, pairsOf } from '../lib/pairs.js'
 
 export function getStaticPaths() {
   return allCommunes.map((commune) => ({ params: { slug: commune.slug }, props: { commune } }))
@@ -50,6 +51,12 @@ const faq = buildFaq(commune)
 
 const children = arrondissements(commune)
 const city = parentCity(commune)
+
+// The nine comparison pages this city belongs to, on the ten pages that have
+// any. They are the strongest pages of the site, so this is where the new family
+// gets its internal links from — and where a reader arriving on one city is
+// offered the question they were probably asking.
+const rivals = isPairCity(commune) ? pairsOf(commune) : []
 const nearby = commune.kind === 'arrondissement' ? null : comparables(commune)
 
 /**
@@ -248,6 +255,30 @@ const structuredData = [jsonLd, faqLd].filter(Boolean)
                 <span class="text-ink-secondary tabular">
                   {formatPricePerSqm(other.recent[nearby.type].pricePerSqm)}
                 </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  {
+    rivals.length > 0 && (
+      <section class="my-14">
+        <h2 class="text-xl font-semibold">Comparer {commune.name} à une autre grande ville</h2>
+        <p class="mt-1 text-sm text-ink-secondary">
+          Écart au m², surface obtenue pour un même budget, écart par typologie et trajectoire sur
+          cinq ans.
+        </p>
+        <ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {rivals.map((other) => (
+            <li>
+              <a
+                href={pairPath(commune, other)}
+                class="block rounded-lg border border-hairline bg-surface px-4 py-3 text-sm font-medium transition-colors hover:border-brand-300 hover:bg-brand-100"
+              >
+                {commune.name} ou {other.name}
               </a>
             </li>
           ))}

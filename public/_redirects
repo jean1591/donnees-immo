@@ -19,3 +19,54 @@
 /prix-immobilier-saint-vallier-71  /prix-immobilier-saint-vallier  301
 /prix-immobilier-vernouillet-28    /prix-immobilier-vernouillet  301
 /prix-immobilier-vouille-86        /prix-immobilier-vouille  301
+
+# City-versus-city pages. The canonical URL orders the two slugs alphabetically:
+# population and sale volume both move with each release and would flip the
+# address of a page already indexed. The reverse spelling is what a reader types
+# half the time, so it redirects rather than 404s — it is never linked from the
+# site and never listed in the sitemap.
+/prix-immobilier-lille-ou-bordeaux                   /prix-immobilier-bordeaux-ou-lille  301
+/prix-immobilier-lyon-ou-bordeaux                    /prix-immobilier-bordeaux-ou-lyon  301
+/prix-immobilier-marseille-ou-bordeaux               /prix-immobilier-bordeaux-ou-marseille  301
+/prix-immobilier-montpellier-ou-bordeaux             /prix-immobilier-bordeaux-ou-montpellier  301
+/prix-immobilier-nantes-ou-bordeaux                  /prix-immobilier-bordeaux-ou-nantes  301
+/prix-immobilier-nice-ou-bordeaux                    /prix-immobilier-bordeaux-ou-nice  301
+/prix-immobilier-paris-ou-bordeaux                   /prix-immobilier-bordeaux-ou-paris  301
+/prix-immobilier-rennes-ou-bordeaux                  /prix-immobilier-bordeaux-ou-rennes  301
+/prix-immobilier-toulouse-ou-bordeaux                /prix-immobilier-bordeaux-ou-toulouse  301
+/prix-immobilier-lyon-ou-lille                       /prix-immobilier-lille-ou-lyon  301
+/prix-immobilier-marseille-ou-lille                  /prix-immobilier-lille-ou-marseille  301
+/prix-immobilier-montpellier-ou-lille                /prix-immobilier-lille-ou-montpellier  301
+/prix-immobilier-nantes-ou-lille                     /prix-immobilier-lille-ou-nantes  301
+/prix-immobilier-nice-ou-lille                       /prix-immobilier-lille-ou-nice  301
+/prix-immobilier-paris-ou-lille                      /prix-immobilier-lille-ou-paris  301
+/prix-immobilier-rennes-ou-lille                     /prix-immobilier-lille-ou-rennes  301
+/prix-immobilier-toulouse-ou-lille                   /prix-immobilier-lille-ou-toulouse  301
+/prix-immobilier-marseille-ou-lyon                   /prix-immobilier-lyon-ou-marseille  301
+/prix-immobilier-montpellier-ou-lyon                 /prix-immobilier-lyon-ou-montpellier  301
+/prix-immobilier-nantes-ou-lyon                      /prix-immobilier-lyon-ou-nantes  301
+/prix-immobilier-nice-ou-lyon                        /prix-immobilier-lyon-ou-nice  301
+/prix-immobilier-paris-ou-lyon                       /prix-immobilier-lyon-ou-paris  301
+/prix-immobilier-rennes-ou-lyon                      /prix-immobilier-lyon-ou-rennes  301
+/prix-immobilier-toulouse-ou-lyon                    /prix-immobilier-lyon-ou-toulouse  301
+/prix-immobilier-montpellier-ou-marseille            /prix-immobilier-marseille-ou-montpellier  301
+/prix-immobilier-nantes-ou-marseille                 /prix-immobilier-marseille-ou-nantes  301
+/prix-immobilier-nice-ou-marseille                   /prix-immobilier-marseille-ou-nice  301
+/prix-immobilier-paris-ou-marseille                  /prix-immobilier-marseille-ou-paris  301
+/prix-immobilier-rennes-ou-marseille                 /prix-immobilier-marseille-ou-rennes  301
+/prix-immobilier-toulouse-ou-marseille               /prix-immobilier-marseille-ou-toulouse  301
+/prix-immobilier-nantes-ou-montpellier               /prix-immobilier-montpellier-ou-nantes  301
+/prix-immobilier-nice-ou-montpellier                 /prix-immobilier-montpellier-ou-nice  301
+/prix-immobilier-paris-ou-montpellier                /prix-immobilier-montpellier-ou-paris  301
+/prix-immobilier-rennes-ou-montpellier               /prix-immobilier-montpellier-ou-rennes  301
+/prix-immobilier-toulouse-ou-montpellier             /prix-immobilier-montpellier-ou-toulouse  301
+/prix-immobilier-nice-ou-nantes                      /prix-immobilier-nantes-ou-nice  301
+/prix-immobilier-paris-ou-nantes                     /prix-immobilier-nantes-ou-paris  301
+/prix-immobilier-rennes-ou-nantes                    /prix-immobilier-nantes-ou-rennes  301
+/prix-immobilier-toulouse-ou-nantes                  /prix-immobilier-nantes-ou-toulouse  301
+/prix-immobilier-paris-ou-nice                       /prix-immobilier-nice-ou-paris  301
+/prix-immobilier-rennes-ou-nice                      /prix-immobilier-nice-ou-rennes  301
+/prix-immobilier-toulouse-ou-nice                    /prix-immobilier-nice-ou-toulouse  301
+/prix-immobilier-rennes-ou-paris                     /prix-immobilier-paris-ou-rennes  301
+/prix-immobilier-toulouse-ou-paris                   /prix-immobilier-paris-ou-toulouse  301
+/prix-immobilier-toulouse-ou-rennes                  /prix-immobilier-rennes-ou-toulouse  301

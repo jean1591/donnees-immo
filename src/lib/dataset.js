@@ -14,7 +14,7 @@ export const DATASET = {
    * the ones that change nothing, which is exactly the signal that teaches a
    * crawler to stop believing `lastmod`.
    */
-  contentUpdated: '2026-08-20',
+  contentUpdated: '2026-08-21',
   /** Last day covered by the data. */
   coverageEnd: '31 décembre 2025',
   firstYear: 2021,
