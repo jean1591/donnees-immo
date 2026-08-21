@@ -190,6 +190,52 @@ const trends = (a, b, type) => {
   return { [a.code]: left, [b.code]: right, spread: Math.abs(left.ratio - right.ratio) }
 }
 
+
+/**
+ * Where the middle half of the sales sits, and whether the two cities overlap at
+ * all. The medians say which is dearer; this says whether the dearer one is out
+ * of reach even at its cheapest — Paris opens above the Lille median, Bordeaux
+ * and Toulouse trade over the same ground.
+ */
+const spread = (a, b, type) => {
+  const left = a.recent[type]
+  const right = b.recent[type]
+  const [dearer, cheaper] =
+    left.pricePerSqm >= right.pricePerSqm ? [a, b] : [b, a]
+  if (!dearer.recent[type].d1 || !cheaper.recent[type].pricePerSqm) return null
+  return {
+    dearer,
+    cheaper,
+    // True where the cheapest tenth of the dearer city still trades above the
+    // other city's median: the two markets barely meet.
+    disjoint: dearer.recent[type].d1 > cheaper.recent[type].pricePerSqm,
+  }
+}
+
+/**
+ * The largest typology BUDGET buys at the median, per city. The gap between the
+ * two is the comparison in the form a buyer holds it — « un T3 ici, un T2 là »
+ * lands where a price per square metre does not.
+ */
+const budgetTypology = (city) => {
+  const affordable = PAGE_ROOMS.filter(
+    (rooms) => hasRoomPage(city, rooms) && roomCell(city, rooms).medianPrice <= BUDGET
+  )
+  const rooms = affordable.at(-1)
+  return rooms ? { rooms, cell: roomCell(city, rooms) } : null
+}
+
+/** Sales in the last year of the series, and how that compares with the first. */
+const activity = (city) => {
+  const first = city.yearly[0]
+  const last = city.yearly.at(-1)
+  const total = (entry) => TYPES.reduce((sum, type) => sum + (entry?.[type]?.count ?? 0), 0)
+  const before = total(first)
+  const after = total(last)
+  if (!before || !after) return null
+  return { year: last.year, sales: after, from: first.year, ratio: after / before - 1 }
+}
+
 /**
  * Everything a pair page states that neither commune page can.
  *
@@ -218,5 +264,8 @@ export const comparison = (a, b) => {
     // something. Two cities both up 13 % is a national tide, not a local story;
     // Bordeaux down 10 % while France is up 7 % is one.
     nationalTrend: lead ? evolution(national, lead, TREND_SPAN) : null,
+    spread: lead ? spread(a, b, lead) : null,
+    budget: { [a.code]: budgetTypology(a), [b.code]: budgetTypology(b) },
+    activity: { [a.code]: activity(a), [b.code]: activity(b) },
   }
 }

@@ -14,6 +14,7 @@
 import { evolution, publishedTypes } from './communes.js'
 import { departmentBySlug, gapToNational, national } from './departments.js'
 import { RECENT_WINDOW } from './dataset.js'
+import { hasRoomPage, roomCell } from './rooms.js'
 import {
   formatArea,
   formatCount,
@@ -303,4 +304,120 @@ export const buildTypologyFaq = ({ commune, prose, cell, trend }) => {
         `pour être publiée.`,
     },
   ]
+}
+
+/**
+ * Questions a city-versus-city page can answer, and only it.
+ *
+ * None of these has a home on either commune page: each one needs both sets of
+ * figures at once. Same rule as the commune block — a question whose data is
+ * missing is not asked, so the set differs from one pair to the next.
+ */
+export const buildPairFaq = ({ a, b, data, budget }) => {
+  const lead = data.lead
+  const label = TYPE_LABELS[lead]
+  const gap = data.gaps[lead]
+  const items = []
+
+  items.push({
+    question: `Est-il plus cher d'acheter ${locative(a.name)} ou ${locative(b.name)} ?`,
+    answer:
+      `${gap.dearer.name} est la plus chère des deux : ` +
+      `${formatPricePerSqm(gap.dearer.recent[lead].pricePerSqm)} contre ` +
+      `${formatPricePerSqm(gap.cheaper.recent[lead].pricePerSqm)} pour ${label.article} ` +
+      `${label.singular}, soit ${formatPercentMagnitude(gap.ratio)} d'écart. Les deux médianes ` +
+      `portent sur la même fenêtre de 24 mois et sur ${formatCount(
+        a.recent[lead].count + b.recent[lead].count
+      )} ventes au total.`,
+  })
+
+  items.push({
+    question: `Combien coûte ${label.article} ${label.singular} ${locative(a.name)} et ${locative(
+      b.name
+    )} ?`,
+    answer: [a, b]
+      .map(
+        (city) =>
+          `${formatEuro(city.recent[lead].medianPrice)} ${locative(city.name)} pour ` +
+          `${formatArea(city.recent[lead].medianArea)}`
+      )
+      .join(', et ') +
+      `. Ce sont des prix de vente médians : la moitié des transactions se sont conclues ` +
+      `au-dessus, l'autre moitié en dessous.`,
+  })
+
+  const [budgetA, budgetB] = [data.budget[a.code], data.budget[b.code]]
+  if (budgetA && budgetB && budgetA.rooms !== budgetB.rooms) {
+    const larger = budgetA.rooms > budgetB.rooms ? { city: a, ...budgetA } : { city: b, ...budgetB }
+    const smaller = budgetA.rooms > budgetB.rooms ? { city: b, ...budgetB } : { city: a, ...budgetA }
+    const step = larger.rooms - smaller.rooms
+    // The next typology up is only quoted where it is published in its own
+    // right: a cell under the 100-sale bar carries a median the rest of the site
+    // refuses to print, and this sentence would be the one place it slipped out.
+    const nextUp = hasRoomPage(smaller.city, smaller.rooms + 1)
+      ? roomCell(smaller.city, smaller.rooms + 1)
+      : null
+    items.push({
+      question: `Qu'achète-t-on avec ${formatEuro(budget)} dans chacune des deux villes ?`,
+      answer:
+        `Un T${larger.rooms} ${locative(larger.city.name)}, dont le prix médian est de ` +
+        `${formatEuro(larger.cell.medianPrice)}, mais seulement un T${smaller.rooms} ` +
+        `${locative(smaller.city.name)}` +
+        (nextUp
+          ? `, où le T${smaller.rooms + 1} est déjà hors budget à ` +
+            `${formatEuro(nextUp.medianPrice)}`
+          : '') +
+        `. ${step > 1 ? `Deux pièces d'écart` : `Une pièce d'écart`}, pour le même budget.`,
+    })
+  }
+
+  if (data.spread?.disjoint) {
+    const { dearer, cheaper } = data.spread
+    items.push({
+      question: `Les deux marchés se recoupent-ils ?`,
+      answer:
+        `Presque pas. Les 10 % de ${label.plural} les moins chers ${locative(dearer.name)} ` +
+        `partent déjà à ${formatPricePerSqm(dearer.recent[lead].d1)}, au-dessus du prix médian ` +
+        `${locative(cheaper.name)}, qui est de ` +
+        `${formatPricePerSqm(cheaper.recent[lead].pricePerSqm)}. Le bas du marché de l'une ` +
+        `coûte plus cher que le milieu du marché de l'autre.`,
+    })
+  }
+
+  if (data.trends) {
+    const left = data.trends[a.code]
+    const right = data.trends[b.code]
+    const move = (trend) =>
+      Math.abs(trend.ratio) < STABLE
+        ? 'est resté stable'
+        : `${trend.ratio > 0 ? 'a progressé' : 'a reculé'} de ${formatPercentMagnitude(trend.ratio)}`
+    items.push({
+      question: `Quelle ville a le plus progressé en cinq ans ?`,
+      answer:
+        `Entre ${left.from} et ${left.to}, le prix au m² ${move(left)} ${locative(a.name)} et ` +
+        `${move(right)} ${locative(b.name)}` +
+        (data.nationalTrend
+          ? `, quand la France entière ${move(data.nationalTrend)}`
+          : '') +
+        `. Ces variations sont nominales, avant inflation.`,
+    })
+  }
+
+  const [actA, actB] = [data.activity[a.code], data.activity[b.code]]
+  if (actA && actB) {
+    const busier = actA.sales >= actB.sales ? a : b
+    const quieter = busier.code === a.code ? b : a
+    items.push({
+      question: `Où le marché est-il le plus actif ?`,
+      answer:
+        `${busier.name}, avec ${formatCount(
+          busier.code === a.code ? actA.sales : actB.sales
+        )} ventes enregistrées en ${actA.year}, contre ${formatCount(
+          quieter.code === a.code ? actA.sales : actB.sales
+        )} ${locative(quieter.name)}. Le volume compte autant que le prix : un marché mince ` +
+        `laisse moins de choix et rend chaque médiane plus fragile.`,
+    })
+  }
+
+  return items
 }

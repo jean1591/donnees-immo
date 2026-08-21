@@ -21,6 +21,8 @@ import {
   TYPE_LABELS,
 } from '../lib/format.js'
 import { roomPagePath } from '../lib/rooms.js'
+import { buildPairFaq } from '../lib/faq.js'
+import Faq from '../components/Faq.astro'
 import { DATASET, basedOn, creator, place, publisher, RECENT_WINDOW } from '../lib/dataset.js'
 
 export function getStaticPaths() {
@@ -113,6 +115,27 @@ const trendSentence =
         `${formatPercentMagnitude(data.nationalTrend.ratio)}.`
       : '')
 
+// Where the middle half of each market sits. The medians say which city is
+// dearer; this says whether a buyer priced out of one has anything to look at in
+// the other, which is the question behind « ou ».
+const rangeSentence = (city) => {
+  const block = city.recent[lead]
+  return (
+    `${sentenceCase(locative(city.name))}, la moitié des ${leadLabel.plural} se sont vendus entre ` +
+    `${formatCount(block.q1)} et ${formatPricePerSqm(block.q3)}, et un dixième sous ` +
+    `${formatPricePerSqm(block.d1)}.`
+  )
+}
+
+const disjointSentence =
+  data.spread?.disjoint &&
+  `Les deux marchés ne se recoupent presque pas : le premier décile ` +
+    `${locative(data.spread.dearer.name)}, à ` +
+    `${formatPricePerSqm(data.spread.dearer.recent[lead].d1)}, dépasse déjà le prix médian ` +
+    `${locative(data.spread.cheaper.name)}.`
+
+const faq = buildPairFaq({ a, b, data, budget: BUDGET })
+
 const title = `${a.name} ou ${b.name} : prix immobilier comparés`
 const description = `${a.name} ou ${b.name} ? ${formatPricePerSqm(a.recent[lead].pricePerSqm)} contre ${formatPricePerSqm(b.recent[lead].pricePerSqm)} pour ${leadLabel.article} ${leadLabel.singular}. Comparaison sur ${formatCount(totalSales)} ventes réelles (DVF).`
 
@@ -140,6 +163,20 @@ const jsonLd = {
     }))
   ),
 }
+
+// FAQPage only because the block below genuinely renders these strings — the
+// markup and the visible text come from the same array, so they cannot drift.
+const faqLd = faq.length && {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faq.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: { '@type': 'Answer', text: item.answer },
+  })),
+}
+
+const structuredData = [jsonLd, faqLd].filter(Boolean)
 ---
 
 <Base title={title} description={description}>
@@ -147,7 +184,7 @@ const jsonLd = {
     slot="head"
     type="application/ld+json"
     is:inline
-    set:html={JSON.stringify(jsonLd)}
+    set:html={JSON.stringify(structuredData)}
   />
 
   <Breadcrumb
@@ -268,6 +305,18 @@ const jsonLd = {
     )
   }
 
+  <section class="my-14">
+    <h2 class="text-xl font-semibold">Fourchette de prix</h2>
+    <p class="mt-1 text-sm text-ink-secondary">
+      La médiane seule ne dit pas si les deux villes jouent sur le même terrain.
+    </p>
+    <div class="mt-4 max-w-2xl space-y-3 leading-relaxed text-ink-secondary">
+      <p>{rangeSentence(a)}</p>
+      <p>{rangeSentence(b)}</p>
+      {disjointSentence && <p class="font-medium text-ink">{disjointSentence}</p>}
+    </div>
+  </section>
+
   {
     data.rooms.length > 0 && (
       <section class="my-14">
@@ -338,6 +387,8 @@ const jsonLd = {
       </section>
     )
   }
+
+  <Faq items={faq} />
 
   <section class="my-14">
     <h2 class="text-xl font-semibold">Aller au détail</h2>
