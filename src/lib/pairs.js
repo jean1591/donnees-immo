@@ -15,6 +15,7 @@ import {
   hasData,
   TYPES,
 } from './communes.js'
+import { national } from './departments.js'
 import { PAGE_ROOMS, hasRoomPage, roomCell } from './rooms.js'
 
 /**
@@ -165,6 +166,10 @@ const roomGaps = (a, b) =>
       dearer,
       cheaper,
       ratio: cells[dearer.code].pricePerSqm / cells[cheaper.code].pricePerSqm - 1,
+      // Signed against the first city, which is the one holding the left-hand
+      // column: a table whose gap column changed reference from row to row would
+      // read as noise. Positive means the first city is the dearer one.
+      fromFirst: cells[a.code].pricePerSqm / cells[b.code].pricePerSqm - 1,
     }
   })
 
@@ -209,5 +214,9 @@ export const comparison = (a, b) => {
     ordering: { [a.code]: ordering(a), [b.code]: ordering(b) },
     rooms: roomGaps(a, b),
     trends: lead ? trends(a, b, lead) : null,
+    // The country over the same five years, so a local move can be read against
+    // something. Two cities both up 13 % is a national tide, not a local story;
+    // Bordeaux down 10 % while France is up 7 % is one.
+    nationalTrend: lead ? evolution(national, lead, TREND_SPAN) : null,
   }
 }

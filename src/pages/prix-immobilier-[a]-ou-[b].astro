@@ -40,6 +40,19 @@ const leadNoun = `${leadLabel.article} ${leadLabel.singular}`
 
 const sentenceCase = (text) => text.charAt(0).toUpperCase() + text.slice(1)
 
+// « 29,6 % de plus » carried separately from « à Bordeaux qu'à Toulouse » so the
+// figure can be emphasised without splitting the sentence into a run of adjacent
+// expressions, which is where the spaces get lost.
+const gapPhrase = (type) => ({
+  strong: `${formatPercentMagnitude(data.gaps[type].ratio)} de plus`,
+  rest: `${locative(data.gaps[type].dearer.name)} qu'${locative(data.gaps[type].cheaper.name)}.`,
+})
+
+// Rust for the dearer side, green for the cheaper — the tokens the price
+// evolutions already use, rather than a second red and a second green.
+const DEARER = 'var(--color-up)'
+const CHEAPER = 'var(--color-down)'
+
 const totalSales = data.types.reduce(
   (sum, type) => sum + a.recent[type].count + b.recent[type].count,
   0
@@ -91,6 +104,13 @@ const trendSentence =
     // the gap is within what the yearly medians can carry.
     (trends.spread >= 0.05
       ? ` Les deux marchés ont donc divergé de ${formatPercentMagnitude(trends.spread)} sur la période.`
+      : '') +
+    // The national move over the same five years. Without it a local figure has
+    // nothing to be read against: two cities both up 13 % is a national tide,
+    // one city down 10 % while the country is up 7 % is a local story.
+    (data.nationalTrend
+      ? ` Sur la même période, la France entière a ${direction(data.nationalTrend.ratio)} de ` +
+        `${formatPercentMagnitude(data.nationalTrend.ratio)}.`
       : '')
 
 const title = `${a.name} ou ${b.name} : prix immobilier comparés`
@@ -191,9 +211,11 @@ const jsonLd = {
     </div>
     {
       area(leadGap.cheaper) - area(leadGap.dearer) > 0 && (
-        <p class="mt-3 text-sm text-ink-muted">
-          {formatArea(area(leadGap.cheaper) - area(leadGap.dearer))} de plus{' '}
-          {locative(leadGap.cheaper.name)}, pour le même budget.
+        <p class="mt-4 rounded-xl border border-brand-300 bg-brand-100 px-5 py-4 text-lg leading-snug text-brand-700 sm:text-xl">
+          <strong class="font-semibold">
+            {`${formatArea(area(leadGap.cheaper) - area(leadGap.dearer))} de plus ${locative(leadGap.cheaper.name)}`}
+          </strong>{' '}
+          pour le même budget.
         </p>
       )
     }
@@ -203,9 +225,11 @@ const jsonLd = {
     data.types.map((type) => (
       <section class="mt-10">
         <h2 class="text-xl font-semibold">{TYPE_LABELS[type].title}</h2>
-        <p class="mt-1 text-sm text-ink-secondary">
-          {data.gaps[type].dearer.name} devance {data.gaps[type].cheaper.name} de{' '}
-          {formatPercentMagnitude(data.gaps[type].ratio)} au mètre carré.
+        <p class="mt-2 text-lg leading-snug sm:text-xl">
+          <strong class="font-semibold" style={`color:${DEARER}`}>
+            <span aria-hidden="true">↑</span> {gapPhrase(type).strong}
+          </strong>{' '}
+          {gapPhrase(type).rest}
         </p>
         <div class="mt-4 grid gap-4 md:grid-cols-2">
           <StatTile commune={a} type={type} />
@@ -237,7 +261,7 @@ const jsonLd = {
         <h2 class="text-xl font-semibold">Par typologie</h2>
         <p class="mt-1 text-sm text-ink-secondary">
           Prix médian au m² des appartements, par nombre de pièces. Chaque cellule repose sur au
-          moins 100 ventes.
+          moins 100 ventes, et l'écart se lit toujours du point de vue de {a.name}.
         </p>
         <div class="mt-4 overflow-x-auto">
           <table class="w-full min-w-[32rem] border-collapse text-sm">
@@ -246,7 +270,7 @@ const jsonLd = {
                 <th class="py-2 pr-4 font-medium"> </th>
                 <th class="py-2 pr-4 font-medium">{a.name}</th>
                 <th class="py-2 pr-4 font-medium">{b.name}</th>
-                <th class="py-2 font-medium">Écart</th>
+                <th class="py-2 font-medium">Écart pour {a.name}</th>
               </tr>
             </thead>
             <tbody>
@@ -266,8 +290,17 @@ const jsonLd = {
                   <td class="py-2 pr-4 tabular">
                     {formatPricePerSqm(row.cells[b.code].pricePerSqm)}
                   </td>
-                  <td class="py-2 tabular text-ink-secondary">
-                    {formatPercentMagnitude(row.ratio)} pour {row.dearer.name}
+                  <td class="py-2">
+                    <span
+                      class="font-semibold tabular"
+                      style={`color:${row.fromFirst >= 0 ? DEARER : CHEAPER}`}
+                    >
+                      <span aria-hidden="true">{row.fromFirst >= 0 ? '↑' : '↓'}</span>{' '}
+                      {formatPercentMagnitude(row.fromFirst)}
+                    </span>{' '}
+                    <span class="text-xs text-ink-muted">
+                      {row.fromFirst >= 0 ? 'plus cher' : 'moins cher'}
+                    </span>
                   </td>
                 </tr>
               ))}
