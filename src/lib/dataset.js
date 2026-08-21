@@ -110,10 +110,17 @@ export const creator = {
  * Dataset parser accepts only Organization or Person for `creator` and warned
  * on every page of the site until this was changed. The name carries the
  * precision the type used to.
+ *
+ * It carries a `description` for the same reason it carries a type: nested in
+ * `isBasedOn` or not, Google reads this as a Dataset item of its own and wants
+ * every required field on it. Without one, the source node raised a
+ * `description` warning on all 4 675 pages at once — the figures were never in
+ * question, only the node describing where they come from.
  */
 export const basedOn = {
   '@type': 'Dataset',
   name: 'Demandes de valeurs foncières géolocalisées',
+  description: `Les mutations immobilières enregistrées par l'administration fiscale, géolocalisées à la parcelle et publiées en open data par Etalab. Millésime couvrant les ventes de ${DATASET.firstYear} à ${DATASET.lastYear}.`,
   url: DATASET.sourceUrl,
   license: DATASET.licenseUrl,
   creator: {
